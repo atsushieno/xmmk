@@ -1,0 +1,6 @@
+Xmmk: cross-platform virtual MIDI keyboard
+------------------------------------------
+
+Xmmk is a tiny virtual MIDI keyboard application based on managed-midi API.
+(It is mostly managed-midi API dogfooding.)
+
