@@ -278,9 +278,9 @@ namespace Xmmk
 			low_button_states = new bool [low_buttons.Length];
 
 			panel.PackStart (CreatePlacement (keys1, 0));
-			panel.PackStart (CreatePlacement (keys2, 1));
+			panel.PackStart (CreatePlacement (keys2, 0.5));
 			panel.PackStart (CreatePlacement (keys3, 1));
-			panel.PackStart (CreatePlacement (keys4, 1));
+			panel.PackStart (CreatePlacement (keys4, 1.5));
 
 			panel.KeyPressed += (o, e) => ProcessKey (true, e);
 			panel.KeyReleased += (o, e) => ProcessKey (false, e);			
@@ -288,7 +288,7 @@ namespace Xmmk
 			this.Content = panel;
 		}
 
-		Placement CreatePlacement (Widget c, int xAlign)
+		Placement CreatePlacement (Widget c, double xAlign)
 		{
 			var p = new Placement () { Child = c, XAlign = xAlign };
 			//c.KeyPressed += (o, e) => ProcessKey (true, e);
@@ -341,7 +341,7 @@ namespace Xmmk
 			// [LEFT] - <del>transpose decrease</del>
 			// [RIGHT] - <del>transpose increase</del>
 
-			public static readonly KeyMap JP106 = new KeyMap ("AZSXDCFVGBHNJMK\xbcL\xbe\xbb\xbf\xba\xe2\xdd", "1Q2W3E4R5T6Y7U8I9O0P\xbd\xc0\xde\xdb\xdc");
+			public static readonly KeyMap JP106 = new KeyMap ("AZSXDCFVGBHNJMK\xbcL\xbe\xbb\xbf\xba\xe2\xdd ", "1Q2W3E4R5T6Y7U8I9O0P\xbd\xc0\xde\xdb\xdc");
 
 			public KeyMap (string lowKeys, string highKeys)
 			{
