@@ -4,3 +4,13 @@ Xmmk: cross-platform virtual MIDI keyboard
 Xmmk is a tiny virtual MIDI keyboard application based on managed-midi API.
 (It is mostly managed-midi API dogfooding.)
 
+For Windows users
+-----------------
+
+Xmmk.csproj does not reference Xwt.WPF by default. You most likely want it.
+
+When building Xmmk, it is necessary to set build configuration to x86
+(you might be able to get x64 working if you use rtmidi_64.dll in
+managed-midi/lib, but I never got it working.)
+
+
