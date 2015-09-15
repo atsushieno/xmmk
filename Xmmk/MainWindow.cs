@@ -75,7 +75,7 @@ namespace Xmmk
 		void ProgramSelected (object sender, EventArgs e)
 		{
 			program = tone_list.IndexOf (((MenuItem) sender).Label);
-			output.SendAsync (new Byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0);
+			output.SendAsync (new Byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0, 0);
 		}
 	
 		protected void OnQuitActionActivated (object sender, EventArgs e)
@@ -148,7 +148,7 @@ namespace Xmmk
 			}
 			output = MidiAccessManager.Default.Outputs.First (d => d.Details.Id == deviceID);
 			output.OpenAsync ();
-			output.SendAsync (new byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0);
+			output.SendAsync (new byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0, 0);
 
 			SetupBankSelector ();
 		}
@@ -364,11 +364,11 @@ namespace Xmmk
 			var key = e.Key;
 			switch (key) {
 			case Keys.Up:
-				if (octave < 7)
+				if (!down && octave < 7)
 					octave++;
 				break;
 			case Keys.Down:
-				if (octave > 0)
+				if (!down && octave > 0)
 					octave--;
 				break;
 //			case Keys.Left:
@@ -425,12 +425,12 @@ namespace Xmmk
 
 			int note;
 			if (ChromaTone)
-				note = octave * 12 - 4 + nid + (low ? 2 : 0);
+				note = octave * 12 - 5 + nid + (low ? 2 : 0);
 			else
 				note = (octave + (low ? 0 : 1)) * 12 - 4 + nid;
 
 			if (0 <= note && note <= 128)
-				output.SendAsync (new byte [] { (byte)((down ? 0x90 : 0x80) + channel), (byte) note, 100 }, 0);
+				output.SendAsync (new byte [] { (byte)((down ? 0x90 : 0x80) + channel), (byte) note, 100 }, 0, 0);
 		}
 		
 		#endregion

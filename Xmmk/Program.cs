@@ -5,9 +5,10 @@ namespace Xmmk
 {
 	class MainClass
 	{
+        [STAThread]
 		public static void Main (string[] args)
 		{
-			Application.Initialize (ToolkitType.Gtk);
+			Application.Initialize ();
 
 			var w = new MainWindow ();
 			w.Closed += (o, e) => Application.Exit ();
