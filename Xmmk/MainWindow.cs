@@ -75,7 +75,7 @@ namespace Xmmk
 		void ProgramSelected (object sender, EventArgs e)
 		{
 			program = tone_list.IndexOf (((MenuItem) sender).Label);
-			output.SendAsync (new Byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0, 0);
+			output.SendAsync (new Byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0, 0, 0);
 		}
 	
 		protected void OnQuitActionActivated (object sender, EventArgs e)
@@ -100,13 +100,13 @@ namespace Xmmk
 			var menu = isOutput ? device_output_menu : device_input_menu;
 			int i = 0;
 			menu.Items.Clear ();
-			foreach (var dev in isOutput ? (IEnumerable<IMidiPort>) MidiAccessManager.Default.Outputs : MidiAccessManager.Default.Inputs) {
-				var devItem = new MenuItem ("_" + i++ + ": " + dev.Details.Name);
+			foreach (var dev in isOutput ? MidiAccessManager.Default.Outputs : MidiAccessManager.Default.Inputs) {
+				var devItem = new MenuItem ("_" + i++ + ": " + dev.Name);
 				devItem.Clicked += delegate {
 					if (isOutput)
-						ChangeOutputDevice (dev.Details.Id);
+						ChangeOutputDevice (dev.Id);
 					else
-						ChangeInputDevice (dev.Details.Id);
+						ChangeInputDevice (dev.Id);
 				};
 				menu.Items.Add (devItem);
 			}
@@ -127,7 +127,7 @@ namespace Xmmk
 					output.Dispose ();
 			};
 
-			ChangeOutputDevice (MidiAccessManager.Default.Outputs.First ().Details.Id);
+			ChangeOutputDevice (MidiAccessManager.Default.Outputs.First ().Id);
 		}
 
 		void ChangeInputDevice (string deviceID)
@@ -136,8 +136,7 @@ namespace Xmmk
 				input.Dispose ();
 				input = null;
 			}
-			input = MidiAccessManager.Default.Inputs.First (d => d.Details.Id == deviceID);
-			input.OpenAsync ();
+			input = MidiAccessManager.Default.OpenInputAsync (deviceID).Result;
 		}
 
 		void ChangeOutputDevice (string deviceID)
@@ -146,9 +145,8 @@ namespace Xmmk
 				output.Dispose ();
 				output = null;
 			}
-			output = MidiAccessManager.Default.Outputs.First (d => d.Details.Id == deviceID);
-			output.OpenAsync ();
-			output.SendAsync (new byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0, 0);
+			output = MidiAccessManager.Default.OpenOutputAsync (deviceID).Result;
+			output.SendAsync (new byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0, 2, 0);
 
 			SetupBankSelector ();
 		}
@@ -278,9 +276,9 @@ namespace Xmmk
 			low_button_states = new bool [low_buttons.Length];
 
 			panel.PackStart (CreatePlacement (keys1, 0));
-			panel.PackStart (CreatePlacement (keys2, 0.5));
-			panel.PackStart (CreatePlacement (keys3, 1));
-			panel.PackStart (CreatePlacement (keys4, 1.5));
+			panel.PackStart (CreatePlacement (keys2, 0.33));
+			panel.PackStart (CreatePlacement (keys3, 0.66));
+			panel.PackStart (CreatePlacement (keys4, 1.0));
 
 			panel.KeyPressed += (o, e) => ProcessKey (true, e);
 			panel.KeyReleased += (o, e) => ProcessKey (false, e);			
@@ -430,7 +428,7 @@ namespace Xmmk
 				note = (octave + (low ? 0 : 1)) * 12 - 4 + nid;
 
 			if (0 <= note && note <= 128)
-				output.SendAsync (new byte [] { (byte)((down ? 0x90 : 0x80) + channel), (byte) note, 100 }, 0, 0);
+				output.SendAsync (new byte [] { (byte)((down ? 0x90 : 0x80) + channel), (byte) note, 100 }, 0, 3, 0);
 		}
 		
 		#endregion
