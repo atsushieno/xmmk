@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\Xwt.Gtk.0.2.18\build\Xwt.Gtk.props" Condition="Exists('..\packages\Xwt.Gtk.0.2.18\build\Xwt.Gtk.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -7,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Xmmk</RootNamespace>
     <AssemblyName>Xmmk</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
@@ -19,7 +20,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Externalconsole>true</Externalconsole>
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>anycpu</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
@@ -34,6 +35,18 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="Xwt">
+      <HintPath>..\packages\Xwt.0.2.18\lib\net40\Xwt.dll</HintPath>
+    </Reference>
+    <Reference Include="Xwt.WPF">
+      <HintPath>..\packages\Xwt.WPF.0.2.18\lib\net40\Xwt.WPF.dll</HintPath>
+    </Reference>
+    <Reference Include="Xwt.Gtk">
+      <HintPath>..\packages\Xwt.Gtk.0.2.18\lib\net40\Xwt.Gtk.dll</HintPath>
+    </Reference>
+    <Reference Include="Xwt.XamMac">
+      <HintPath>..\packages\Xwt.XamMac.0.2.18\lib\net40\Xwt.XamMac.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
@@ -41,25 +54,18 @@
     <Compile Include="MainWindow.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <ItemGroup>
-    <ProjectReference Include="..\external\xwt\Xwt\Xwt.csproj">
-      <Project>{92494904-35FA-4DC9-BDE9-3A3E87AC49D3}</Project>
-      <Name>Xwt</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\external\xwt\Xwt.Gtk\Xwt.Gtk.csproj">
-      <Project>{C3887A93-B2BD-4097-8E2F-3A063EFF32FD}</Project>
-      <Name>Xwt.Gtk</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\external\managed-midi\lib\Commons.Music.Midi.csproj">
-      <Project>{D2FFA1EE-91DD-477D-8965-1E43CB0CBB69}</Project>
-      <Name>Commons.Music.Midi</Name>
-    </ProjectReference>
-  </ItemGroup>
   <ItemGroup />
   <ItemGroup>
     <EmbeddedResource Include="Resources\tonelist.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\external\managed-midi\Commons.Music.Midi.Desktop\Commons.Music.Midi.Desktop.csproj">
+      <Project>{59EEFB0D-3957-43FC-8272-C3B460F7FF84}</Project>
+      <Name>Commons.Music.Midi.Desktop</Name>
+    </ProjectReference>
   </ItemGroup>
 </Project>

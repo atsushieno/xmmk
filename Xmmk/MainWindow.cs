@@ -75,7 +75,7 @@ namespace Xmmk
 		void ProgramSelected (object sender, EventArgs e)
 		{
 			program = tone_list.IndexOf (((MenuItem) sender).Label);
-			output.SendAsync (new Byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0, 0, 0);
+			output.SendAsync (new Byte [] { (byte) (MidiEvent.Program + channel), (byte) program }, 0, 0, 0);
 		}
 	
 		protected void OnQuitActionActivated (object sender, EventArgs e)
@@ -146,7 +146,7 @@ namespace Xmmk
 				output = null;
 			}
 			output = MidiAccessManager.Default.OpenOutputAsync (deviceID).Result;
-			output.SendAsync (new byte [] { (byte) (SmfEvent.Program + channel), (byte) program }, 0, 2, 0);
+			output.SendAsync (new byte [] { (byte) (MidiEvent.Program + channel), (byte) program }, 0, 2, 0);
 
 			SetupBankSelector ();
 		}
