@@ -9,6 +9,8 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Commons.Music.Midi.Shared",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Commons.Music.Midi.Desktop", "external\managed-midi\Commons.Music.Midi.Desktop\Commons.Music.Midi.Desktop.csproj", "{59EEFB0D-3957-43FC-8272-C3B460F7FF84}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "alsa-sharp", "external\managed-midi\external\alsa-sharp\alsa-sharp\alsa-sharp.csproj", "{D8537EB3-C573-43D6-914A-455D6AC5AA11}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,14 @@ Global
 		{59EEFB0D-3957-43FC-8272-C3B460F7FF84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{59EEFB0D-3957-43FC-8272-C3B460F7FF84}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{59EEFB0D-3957-43FC-8272-C3B460F7FF84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8537EB3-C573-43D6-914A-455D6AC5AA11}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8537EB3-C573-43D6-914A-455D6AC5AA11}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8537EB3-C573-43D6-914A-455D6AC5AA11}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D8537EB3-C573-43D6-914A-455D6AC5AA11}.Debug|x86.Build.0 = Debug|Any CPU
+		{D8537EB3-C573-43D6-914A-455D6AC5AA11}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8537EB3-C573-43D6-914A-455D6AC5AA11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8537EB3-C573-43D6-914A-455D6AC5AA11}.Release|x86.ActiveCfg = Release|Any CPU
+		{D8537EB3-C573-43D6-914A-455D6AC5AA11}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
