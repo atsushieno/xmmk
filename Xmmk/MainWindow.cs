@@ -38,7 +38,19 @@ namespace Xmmk
 				Close ();
 			};
 			fileMenu.Items.Add (exit);
-			
+
+			var changeLayout = new MenuItem ("_Change Layout");
+			var changeLayoutMenu = new Menu ();
+			changeLayout.SubMenu = changeLayoutMenu;
+			var layoutMenu = new Menu ();
+			layoutMenu.Items.Add (changeLayout);
+			var layoutPiano = new MenuItem ("Piano");
+			layoutPiano.Clicked += LayoutChanged;
+			var layoutChromaTone = new MenuItem ("Chromatone");
+			layoutChromaTone.Clicked += LayoutChanged;
+			changeLayoutMenu.Items.Add (layoutPiano);
+			changeLayoutMenu.Items.Add (layoutChromaTone);
+
 			var toneMenu = new Menu ();
 			for (int i = 0; i < tone_categories.Length; i++) {
 				var item = new MenuItem (tone_categories [i]);
@@ -68,8 +80,22 @@ namespace Xmmk
 			
 			MainMenu = new Menu ();
 			MainMenu.Items.Add (new MenuItem ("_File") { SubMenu = fileMenu });
+			MainMenu.Items.Add (new MenuItem ("_Layout") { SubMenu = layoutMenu });
 			MainMenu.Items.Add (new MenuItem ("_Tone") { SubMenu = toneMenu });
 			MainMenu.Items.Add (new MenuItem ("_Device") { SubMenu = deviceMenu });
+		}
+
+		private void LayoutChanged (object sender, EventArgs e)
+		{
+			var menuItem = (MenuItem) sender;
+			if (menuItem.Label == "Piano") {
+				ChromaTone = false;
+				key_labels = key_labels_piano;
+			} else {
+				ChromaTone = true;
+				key_labels = key_labels_chromatone;
+			}
+			SetupKeyboard ();
 		}
 
 		void ProgramSelected (object sender, EventArgs e)
@@ -87,7 +113,6 @@ namespace Xmmk
 
 		IMidiOutput output;
 		IMidiInput input;
-		int key_channel = 1;
 		int channel = 1;
 		int octave = 4; // lowest
 		int program = 0; // grand piano
@@ -199,20 +224,14 @@ namespace Xmmk
 
 		#region Keyboard
 
-#if CHROMA_TONE
-		static readonly string [] key_labels = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
-#else
-		static readonly string [] key_labels = {"c", "c+", "d", "d+", "e", "", "f", "f+", "g", "g+", "a", "a+", "b", ""};
-#endif
+		static readonly string [] key_labels_chromatone = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
+		static readonly string [] key_labels_piano = {"c", "c+", "d", "d+", "e", "", "f", "f+", "g", "g+", "a", "a+", "b", ""};
+		static string [] key_labels = key_labels_piano;
 
 		static readonly List<string> tone_list;
 
-#if CHROMA_TONE
-		public const bool ChromaTone = true;
-#else
-		public const bool ChromaTone = false;
-#endif
-		
+		public bool ChromaTone = false;
+
 		void SetupKeyboard ()
 		{
 			var panel = new VBox () { CanGetFocus = true };
