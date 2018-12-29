@@ -75,7 +75,7 @@ namespace Xmmk
 		void ProgramSelected (object sender, EventArgs e)
 		{
 			program = tone_list.IndexOf (((MenuItem) sender).Label);
-			output.Send (new Byte [] { (byte) (MidiEvent.Program + channel), (byte) program }, 0, 0, 0);
+			output.Send (new Byte [] { (byte) (MidiEvent.Program + channel), (byte) program }, 0, 2, 0);
 		}
 	
 		protected void OnQuitActionActivated (object sender, EventArgs e)
@@ -195,29 +195,8 @@ namespace Xmmk
 			"_P 120 SFX"
 			};
 
-		void SetupToneSelector ()
-		{
-			/*
-			tone_menu = new MenuItem ("&Tone");
-			this.Menu.MenuItems.Add (tone_menu);
-			MenuItem sub = null;
-			for (int i = 0; i < tone_list.Count; i++) {
-				if (i % 8 == 0) {
-					sub = new MenuItem (tone_categories [i / 8]);
-					tone_menu.MenuItems.Add (sub);
-				}
-				var mi = new MenuItem (tone_list [i]);
-				mi.Tag = i;
-				mi.Select += delegate {
-					output.Write (0, new MidiMessage (0xC0 + channel, (int) mi.Tag, 0));
-				};
-				sub.MenuItems.Add (mi);
-			}
-			*/
-		}
-		
 		#endregion
-		
+
 		#region Keyboard
 
 #if CHROMA_TONE
