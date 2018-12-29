@@ -115,6 +115,7 @@ namespace Xmmk
 		IMidiInput input;
 		int channel = 1;
 		int octave = 4; // lowest
+		int transpose = 0;
 		int program = 0; // grand piano
 
 		Menu device_output_menu;
@@ -367,12 +368,12 @@ namespace Xmmk
 				if (!down && octave > 0)
 					octave--;
 				break;
-//			case Keys.Left:
-//				transpose--;
-//				break;
-//			case Keys.Right:
-//				transpose++;
-//				break;
+			case Keys.Left:
+				transpose--;
+				break;
+			case Keys.Right:
+				transpose++;
+				break;
 			default:
 				var ch = char.ToUpper ((char) key);
 				var idx = keymap.LowKeys.IndexOf (ch);
@@ -421,9 +422,9 @@ namespace Xmmk
 
 			int note;
 			if (ChromaTone)
-				note = octave * 12 - 5 + nid + (low ? 2 : 0);
+				note = octave * 12 - 5 + nid + (low ? 2 : 0) + transpose;
 			else
-				note = (octave + (low ? 0 : 1)) * 12 - 4 + nid;
+				note = (octave + (low ? 0 : 1)) * 12 - 4 + nid + transpose;
 
 			if (0 <= note && note <= 128)
 				output.Send (new byte [] { (byte)((down ? 0x90 : 0x80) + channel), (byte) note, 100 }, 0, 3, 0);
