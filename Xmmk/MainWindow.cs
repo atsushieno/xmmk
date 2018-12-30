@@ -96,12 +96,16 @@ namespace Xmmk
 
 		#region Keyboard
 
-		static readonly string [] key_labels_chromatone = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
+		static readonly string [] note_names = { "c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b" };
+		static readonly string [] key_labels_chromatone = note_names;
 		static readonly string [] key_labels_piano = {"c", "c+", "d", "d+", "e", "", "f", "f+", "g", "g+", "a", "a+", "b", ""};
 		static string [] key_labels = key_labels_piano;
 
 		int octave;
 		int transpose;
+
+		Label octave_label;
+		Label transpose_label;
 
 		public int Octave {
 			get => octave;
@@ -119,9 +123,6 @@ namespace Xmmk
 			}
 		}
 
-		Label octave_label;
-		Label transpose_label;
-
 		bool chroma_tone;
 		public bool ChromaTone {
 			get => chroma_tone;
@@ -132,6 +133,8 @@ namespace Xmmk
 			}
 		}
 
+		TextEntry notepad;
+
 		void SetupWindowContent ()
 		{
 			var entireContentBox = new VBox ();
@@ -141,6 +144,13 @@ namespace Xmmk
 
 			var keyboard = SetupKeyboard ();
 			entireContentBox.PackStart (keyboard);
+
+			notepad = new TextEntry () {
+				MultiLine = true,
+				HeightRequest = 200,
+				VerticalPlacement = WidgetPlacement.Start,		 
+				CursorPosition = 0 };
+			entireContentBox.PackStart (notepad);
 
 			this.Content = entireContentBox;
 
@@ -377,10 +387,39 @@ namespace Xmmk
 			else
 				note = (octave + (low ? 0 : 1)) * 12 - 4 + nid + transpose;
 
-			if (0 <= note && note <= 128)
-				midi.NoteOn ((byte) note, (byte) (down ? 100 : 0));
+			if (0 <= note && note <= 128) {
+				if (down) {
+					var mml = NoteNumberToName (note);
+					int newPosition = notepad.CursorPosition + mml.Length;
+					notepad.Text = notepad.Text.Insert (notepad.CursorPosition, mml);
+					if (notepad.Text.Length - notepad.Text.LastIndexOf ('\n') > notepad_wrap_line_at) {
+						notepad.Text += "\r\n";
+						newPosition++;
+						newPosition++;
+					}
+					notepad.CursorPosition = newPosition;
+					notepad.TooltipText = "at " + notepad.CursorPosition;
+				}
+				midi.NoteOn ((byte)note, (byte)(down ? 100 : 0));
+			}
 		}
-		
+
+		const int notepad_wrap_line_at = 80;
+		int last_octave = 4;
+
+		string NoteNumberToName (int note)
+		{
+			string mml = " ";
+			int newOctave = note / 12;
+			for (int diff = newOctave - last_octave; diff > 0; diff--)
+				mml += '>';
+			for (int diff = newOctave - last_octave; diff < 0; diff++)
+				mml += '<';
+			mml += note_names [note % 12];
+			last_octave = newOctave;
+			return mml;
+		}
+
 		#endregion
 	}
 }
