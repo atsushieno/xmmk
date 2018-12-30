@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
 using Xwt;
 using Xwt.Drawing;
 using Commons.Music.Midi;
@@ -398,7 +398,6 @@ namespace Xmmk
 						newPosition++;
 					}
 					notepad.CursorPosition = newPosition;
-					notepad.TooltipText = "at " + notepad.CursorPosition;
 				}
 				midi.NoteOn ((byte)note, (byte)(down ? 100 : 0));
 			}
@@ -409,7 +408,7 @@ namespace Xmmk
 
 		string NoteNumberToName (int note)
 		{
-			string mml = " ";
+			string mml = high_button_states.Sum (v => v ? 1 : 0) > 1 || low_button_states.Sum (v => v ? 1 : 0) > 1 ? "&" : " ";
 			int newOctave = note / 12;
 			for (int diff = newOctave - last_octave; diff > 0; diff--)
 				mml += '>';
