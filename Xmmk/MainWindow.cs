@@ -15,12 +15,14 @@ namespace Xmmk
 
 		public MainWindow ()
 		{
+			this.Closed += (o, e) => Application.Exit ();
+
 			midi.SetupMidiDevices ();
 			midi.OutputDeviceChanged += (o, e) => UpdateBankSelectorMenu ();
 			
 			SetupMenu ();
 			
-			SetupKeyboard ();
+			SetupWindowContent ();
 		}
 		
 		void SetupMenu ()
@@ -31,18 +33,6 @@ namespace Xmmk
 				Close ();
 			};
 			fileMenu.Items.Add (exit);
-
-			var viewMenu = new Menu ();
-			var changeLayout = new MenuItem ("_Change Keyboard Layout");
-			var layoutPiano = new MenuItem ("Piano");
-			layoutPiano.Clicked += KeyboardLayoutChanged;
-			var layoutChromaTone = new MenuItem ("Chromatone");
-			layoutChromaTone.Clicked += KeyboardLayoutChanged;
-			var changeLayoutSubMenu = new Menu ();
-			changeLayout.SubMenu = changeLayoutSubMenu;
-			changeLayoutSubMenu.Items.Add (layoutPiano);
-			changeLayoutSubMenu.Items.Add (layoutChromaTone);
-			viewMenu.Items.Add (changeLayout);
 
 			var toneMenu = new Menu ();
 			for (int i = 0; i < GeneralMidi.InstrumentCategories.Length; i++) {
@@ -57,25 +47,9 @@ namespace Xmmk
 				toneMenu.Items.Add (item);
 			}
 
-			var deviceMenu = new Menu ();
-			var outputItem = new MenuItem ("_Output");
-			device_output_menu = new Menu ();
-			outputItem.SubMenu = device_output_menu;
-			SetupDeviceSelectorMenu (true);
-			//output.Clicked += delegate { SetupDeviceSelector (true); };
-			deviceMenu.Items.Add (outputItem);
-			var inputItem = new MenuItem ("_Input");
-			device_input_menu = new Menu ();
-			inputItem.SubMenu = device_input_menu;
-			SetupDeviceSelectorMenu (false);
-			//input.Clicked += delegate { SetupDeviceSelector (false); };
-			deviceMenu.Items.Add (inputItem);
-			
 			MainMenu = new Menu ();
 			MainMenu.Items.Add (new MenuItem ("_File") { SubMenu = fileMenu });
-			MainMenu.Items.Add (new MenuItem ("_View") { SubMenu = viewMenu });
 			MainMenu.Items.Add (new MenuItem ("_Tone") { SubMenu = toneMenu });
-			MainMenu.Items.Add (new MenuItem ("_Device") { SubMenu = deviceMenu });
 		}
 
 		private void KeyboardLayoutChanged (object sender, EventArgs e)
@@ -83,50 +57,18 @@ namespace Xmmk
 			var menuItem = (MenuItem) sender;
 			if (menuItem.Label == "Piano") {
 				ChromaTone = false;
-				key_labels = key_labels_piano;
 			} else {
 				ChromaTone = true;
-				key_labels = key_labels_chromatone;
 			}
-			SetupKeyboard ();
+			SetupWindowContent ();
 		}
 
 		void ProgramSelected (object sender, EventArgs e)
 		{
 			midi.ChangeProgram (Array.IndexOf (GeneralMidi.InstrumentNames, ((MenuItem)sender).Label));
 		}
-	
-		protected void OnQuitActionActivated (object sender, EventArgs e)
-		{
-			Application.Exit ();
-		}
 
-		#region MIDI configuration
-
-		Menu device_output_menu;
-		Menu device_input_menu;
-
-		void SetupDeviceSelectorMenu (bool isOutput)
-		{
-			var menu = isOutput ? device_output_menu : device_input_menu;
-			int i = 0;
-			menu.Items.Clear ();
-			foreach (var dev in isOutput ? midi.MidiAccess.Outputs : midi.MidiAccess.Inputs) {
-				var devItem = new MenuItem ("_" + i++ + ": " + dev.Name);
-				devItem.Clicked += delegate {
-					if (isOutput)
-						midi.ChangeOutputDevice (dev.Id);
-					else
-						midi.ChangeInputDevice (dev.Id);
-				};
-				menu.Items.Add (devItem);
-			}
-
-			// bring back focus to the keyboard panel.
-			if (Content != null)
-				Content.SetFocus ();
-		}
-
+		// TODO: implement
 		void UpdateBankSelectorMenu ()
 		{
 			var db = midi.CurrentOutputMidiModule;
@@ -152,17 +94,102 @@ namespace Xmmk
 			}
 		}
 
-		#endregion
-
 		#region Keyboard
 
 		static readonly string [] key_labels_chromatone = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
 		static readonly string [] key_labels_piano = {"c", "c+", "d", "d+", "e", "", "f", "f+", "g", "g+", "a", "a+", "b", ""};
 		static string [] key_labels = key_labels_piano;
 
-		public bool ChromaTone = false;
+		int octave;
+		int transpose;
 
-		void SetupKeyboard ()
+		public int Octave {
+			get => octave;
+			set {
+				octave = value;
+				octave_label.Text = octave.ToString ();
+			}
+		}
+
+		public int Transpose {
+			get => transpose;
+			set {
+				transpose = value;
+				transpose_label.Text = transpose.ToString ();
+			}
+		}
+
+		Label octave_label;
+		Label transpose_label;
+
+		bool chroma_tone;
+		public bool ChromaTone {
+			get => chroma_tone;
+			set {
+				chroma_tone = value;
+				key_labels = value ? key_labels_chromatone : key_labels_piano;
+				SetupWindowContent ();
+			}
+		}
+
+		void SetupWindowContent ()
+		{
+			var entireContentBox = new VBox ();
+
+			var headToolBox = SetupHeadToolBox ();
+			entireContentBox.PackStart (headToolBox);
+
+			var keyboard = SetupKeyboard ();
+			entireContentBox.PackStart (keyboard);
+
+			this.Content = entireContentBox;
+
+			keyboard.SetFocus (); // it is not focused when layout is changed.
+		}
+
+		int current_device = 0;
+		int current_layout = 0;
+
+		HBox SetupHeadToolBox ()
+		{
+			var headToolBox = new HBox ();
+
+			// device selector
+			var deviceSelectorBox = new ComboBox ();
+			foreach (var output in midi.MidiAccess.Outputs)
+				deviceSelectorBox.Items.Add (output, output.Name);
+			deviceSelectorBox.SelectedIndex = current_device;
+			deviceSelectorBox.SelectionChanged += (sender, e) => {
+				current_device = deviceSelectorBox.SelectedIndex;
+				midi.ChangeOutputDevice (((IMidiPortDetails)deviceSelectorBox.SelectedItem).Id);
+			};
+			headToolBox.PackStart (deviceSelectorBox);
+
+			// keyboard layout
+			var layoutSelectorBox = new ComboBox ();
+			layoutSelectorBox.Items.Add (false, "Piano");
+			layoutSelectorBox.Items.Add (true, "ChromaTone");
+			layoutSelectorBox.SelectedIndex = current_layout;
+			layoutSelectorBox.SelectionChanged += (sender, e) => {
+				current_layout = layoutSelectorBox.SelectedIndex;
+				ChromaTone = (bool) layoutSelectorBox.SelectedItem;
+			};
+			headToolBox.PackStart (layoutSelectorBox);
+
+			// octave and transpose
+			this.octave_label = new Label ();
+			this.transpose_label = new Label ();
+			Octave = 4;
+			Transpose = 0;
+			headToolBox.PackStart (new Label { Text = "Octave:", TooltipText = "SHIFT + UP/DOWN to change it" });
+			headToolBox.PackStart (octave_label);
+			headToolBox.PackStart (new Label { Text = "Transpose:", TooltipText = "SHIFT + LEFT/RIGHT to change it" });
+			headToolBox.PackStart (transpose_label);
+
+			return headToolBox;
+		}
+
+		VBox SetupKeyboard ()
 		{
 			var panel = new VBox () { CanGetFocus = true };
 			HBox keys1 = new HBox (), keys2 = new HBox (), keys3 = new HBox (), keys4 = new HBox ();
@@ -201,11 +228,9 @@ namespace Xmmk
 			panel.PackStart (CreatePlacement (keys4, 1.0));
 
 			panel.KeyPressed += (o, e) => ProcessKey (true, e);
-			panel.KeyReleased += (o, e) => ProcessKey (false, e);			
-			
-			this.Content = panel;
+			panel.KeyReleased += (o, e) => ProcessKey (false, e);
 
-			panel.SetFocus (); // it is not focused when layout is changed.
+			return panel;
 		}
 
 		Placement CreatePlacement (Widget c, double xAlign)
@@ -277,26 +302,25 @@ namespace Xmmk
 
 		#region Key Events
 
-		int octave = 4; // lowest
-		int transpose = 0;
-
 		void ProcessKey (bool down, KeyEventArgs e)
 		{
 			var key = e.Key;
 			switch (key) {
 			case Keys.Up:
-				if (!down && octave < 7)
-					octave++;
+				if (e.Modifiers == ModifierKeys.Shift && !down && octave < 7)
+					Octave++;
 				break;
 			case Keys.Down:
-				if (!down && octave > 0)
-					octave--;
+				if (e.Modifiers == ModifierKeys.Shift && !down && octave > 0)
+					Octave--;
 				break;
 			case Keys.Left:
-				transpose--;
+				if (e.Modifiers == ModifierKeys.Shift)
+					Transpose--;
 				break;
 			case Keys.Right:
-				transpose++;
+				if (e.Modifiers == ModifierKeys.Shift)
+					Transpose++;
 				break;
 			default:
 				var ch = char.ToUpper ((char) key);
