@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Xmmk</RootNamespace>
     <AssemblyName>Xmmk</AssemblyName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
