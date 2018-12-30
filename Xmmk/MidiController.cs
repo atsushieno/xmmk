@@ -12,6 +12,8 @@ namespace Xmmk
 		public int Channel { get; set; } = 1;
 		public int Program { get; private set; } = 0; // grand piano
 
+		public IMidiAccess MidiAccess => MidiAccessManager.Default;
+
 		public MidiModuleDefinition CurrentOutputMidiModule => MidiModuleDatabase.Default.Resolve (Output.Details.Name);
 
 		public event EventHandler ProgramChanged;

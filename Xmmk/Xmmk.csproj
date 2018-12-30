@@ -41,11 +41,11 @@
     <Reference Include="Xwt.WPF">
       <HintPath>..\packages\Xwt.WPF.0.2.143\lib\net40\Xwt.WPF.dll</HintPath>
     </Reference>
-    <Reference Include="Xwt.Gtk">
-      <HintPath>..\packages\Xwt.Gtk.0.2.143\lib\net40\Xwt.Gtk.dll</HintPath>
-    </Reference>
     <Reference Include="Xwt.XamMac">
       <HintPath>..\packages\Xwt.XamMac.0.2.143\lib\net40\Xwt.XamMac.dll</HintPath>
+    </Reference>
+    <Reference Include="Xwt.Gtk">
+      <HintPath>..\packages\Xwt.Gtk.0.2.143\lib\net40\Xwt.Gtk.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -56,9 +56,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup />
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\tonelist.txt" />
-  </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />

@@ -11,21 +11,12 @@ namespace Xmmk
 {
 	public partial class MainWindow : Window
 	{
-		static MainWindow ()
-		{
-			tone_list = new List<string> ();
-			int n = 0;
-			var chars = "\n".ToCharArray ();
-			foreach (string s in new StreamReader (typeof (MainWindow).Assembly.GetManifestResourceStream ("Xmmk.Resources.tonelist.txt")).ReadToEnd ().Split (chars, StringSplitOptions.RemoveEmptyEntries))
-				tone_list.Add (n++ + ":" + s);
-		}
-
 		MidiController midi = new MidiController ();
-		
+
 		public MainWindow ()
 		{
 			midi.SetupMidiDevices ();
-			midi.OutputDeviceChanged += (o, e) => SetupBankSelector ();
+			midi.OutputDeviceChanged += (o, e) => UpdateBankSelectorMenu ();
 			
 			SetupMenu ();
 			
@@ -44,9 +35,9 @@ namespace Xmmk
 			var viewMenu = new Menu ();
 			var changeLayout = new MenuItem ("_Change Keyboard Layout");
 			var layoutPiano = new MenuItem ("Piano");
-			layoutPiano.Clicked += LayoutChanged;
+			layoutPiano.Clicked += KeyboardLayoutChanged;
 			var layoutChromaTone = new MenuItem ("Chromatone");
-			layoutChromaTone.Clicked += LayoutChanged;
+			layoutChromaTone.Clicked += KeyboardLayoutChanged;
 			var changeLayoutSubMenu = new Menu ();
 			changeLayout.SubMenu = changeLayoutSubMenu;
 			changeLayoutSubMenu.Items.Add (layoutPiano);
@@ -54,11 +45,11 @@ namespace Xmmk
 			viewMenu.Items.Add (changeLayout);
 
 			var toneMenu = new Menu ();
-			for (int i = 0; i < tone_categories.Length; i++) {
-				var item = new MenuItem (tone_categories [i]);
+			for (int i = 0; i < GeneralMidi.InstrumentCategories.Length; i++) {
+				var item = new MenuItem (GeneralMidi.InstrumentCategories [i]);
 				var catMenu = new Menu ();
 				for (int j = 0; j < 8; j++) {
-					var tone = new MenuItem (tone_list [i * 8 + j]);
+					var tone = new MenuItem (GeneralMidi.InstrumentNames [i * 8 + j]);
 					tone.Clicked += ProgramSelected;
 					catMenu.Items.Add (tone);
 				}
@@ -70,13 +61,13 @@ namespace Xmmk
 			var outputItem = new MenuItem ("_Output");
 			device_output_menu = new Menu ();
 			outputItem.SubMenu = device_output_menu;
-			SetupDeviceSelector (true);
+			SetupDeviceSelectorMenu (true);
 			//output.Clicked += delegate { SetupDeviceSelector (true); };
 			deviceMenu.Items.Add (outputItem);
 			var inputItem = new MenuItem ("_Input");
 			device_input_menu = new Menu ();
 			inputItem.SubMenu = device_input_menu;
-			SetupDeviceSelector (false);
+			SetupDeviceSelectorMenu (false);
 			//input.Clicked += delegate { SetupDeviceSelector (false); };
 			deviceMenu.Items.Add (inputItem);
 			
@@ -87,7 +78,7 @@ namespace Xmmk
 			MainMenu.Items.Add (new MenuItem ("_Device") { SubMenu = deviceMenu });
 		}
 
-		private void LayoutChanged (object sender, EventArgs e)
+		private void KeyboardLayoutChanged (object sender, EventArgs e)
 		{
 			var menuItem = (MenuItem) sender;
 			if (menuItem.Label == "Piano") {
@@ -102,7 +93,7 @@ namespace Xmmk
 
 		void ProgramSelected (object sender, EventArgs e)
 		{
-			midi.ChangeProgram (tone_list.IndexOf (((MenuItem)sender).Label));
+			midi.ChangeProgram (Array.IndexOf (GeneralMidi.InstrumentNames, ((MenuItem)sender).Label));
 		}
 	
 		protected void OnQuitActionActivated (object sender, EventArgs e)
@@ -115,12 +106,12 @@ namespace Xmmk
 		Menu device_output_menu;
 		Menu device_input_menu;
 
-		void SetupDeviceSelector (bool isOutput)
+		void SetupDeviceSelectorMenu (bool isOutput)
 		{
 			var menu = isOutput ? device_output_menu : device_input_menu;
 			int i = 0;
 			menu.Items.Clear ();
-			foreach (var dev in isOutput ? MidiAccessManager.Default.Outputs : MidiAccessManager.Default.Inputs) {
+			foreach (var dev in isOutput ? midi.MidiAccess.Outputs : midi.MidiAccess.Inputs) {
 				var devItem = new MenuItem ("_" + i++ + ": " + dev.Name);
 				devItem.Clicked += delegate {
 					if (isOutput)
@@ -130,9 +121,13 @@ namespace Xmmk
 				};
 				menu.Items.Add (devItem);
 			}
+
+			// bring back focus to the keyboard panel.
+			if (Content != null)
+				Content.SetFocus ();
 		}
 
-		void SetupBankSelector ()
+		void UpdateBankSelectorMenu ()
 		{
 			var db = midi.CurrentOutputMidiModule;
 			if (db != null && db.Instrument != null && db.Instrument.Maps.Count > 0) {
@@ -156,25 +151,6 @@ namespace Xmmk
 				}
 			}
 		}
-		
-		static readonly string [] tone_categories = {
-			"_A 0 Piano",
-			"_B 8 Chromatic Percussion",
-			"_C 16 Organ",
-			"_D 24 Guitar",
-			"_E 32 Bass",
-			"_F 40 Strings",
-			"_G 48 Ensemble",
-			"_H 56 Brass",
-			"_I 64 Reed",
-			"_J 72 Pipe",
-			"_K 80 Synth Lead",
-			"_L 88 Synth Pad",
-			"_M 96 Synth Effects",
-			"_N 104 Ethnic",
-			"_O 112 Percussive",
-			"_P 120 SFX"
-			};
 
 		#endregion
 
@@ -184,47 +160,37 @@ namespace Xmmk
 		static readonly string [] key_labels_piano = {"c", "c+", "d", "d+", "e", "", "f", "f+", "g", "g+", "a", "a+", "b", ""};
 		static string [] key_labels = key_labels_piano;
 
-		static readonly List<string> tone_list;
-
 		public bool ChromaTone = false;
 
 		void SetupKeyboard ()
 		{
 			var panel = new VBox () { CanGetFocus = true };
 			HBox keys1 = new HBox (), keys2 = new HBox (), keys3 = new HBox (), keys4 = new HBox ();
-			
-			int top = 70;
 
+			var keyRows = new List<Tuple<string, List<Button>, HBox, HBox, Action<Button[]>>> ();
 			// (JP106) offset 4, 10, 18 are not mapped, so skip those numbers
 			var hl = new List<Button> ();
-			int labelStringIndex = key_labels.Length - 5;
-			for (int i = 0; i < keymap.HighKeys.Length; i++) {
-				var b = new NoteButton ();
-				b.Label = key_labels [labelStringIndex % key_labels.Length];
-				labelStringIndex++;
-				if (!IsNotableIndex (i)) {
-					b.CanGetFocus = false;
-					b.BackgroundColor = new Color (0, 0, 0, 255);
-				}
-				hl.Add (b);
-				(i % 2 == 0 ? keys1 : keys2).PackStart (b);
-			}
-			high_buttons = hl.ToArray ();
-			
+			keyRows.Add (Tuple.Create (keymap.HighKeys, hl, keys1, keys2, new Action<Button[]> (a => high_buttons = a)));
 			var ll = new List<Button> ();
-			labelStringIndex = key_labels.Length - 5;
-			for (int i = 0; i < keymap.LowKeys.Length; i++) {
-				var b = new NoteButton ();
-				b.Label = key_labels [labelStringIndex % key_labels.Length];
-				labelStringIndex++;
-				if (!IsNotableIndex (i)) {
-					b.CanGetFocus = false;
-					b.BackgroundColor = new Color (0, 0, 0, 255);
+			keyRows.Add (Tuple.Create (keymap.LowKeys, ll, keys3, keys4, new Action<Button []> (a => low_buttons = a)));
+
+			foreach (var keyRow in keyRows) {
+				int labelStringIndex = key_labels.Length - 5;
+				for (int i = 0; i < keyRow.Item1.Length; i++) {
+					var b = new NoteButton ();
+					b.Label = key_labels [labelStringIndex % key_labels.Length];
+					labelStringIndex++;
+					if (!IsNotableIndex (i)) {
+						b.CanGetFocus = false;
+						b.Sensitive = false;
+						// this seems to only work fine on GTK3...
+						b.BackgroundColor = new Color (0, 0, 0, 255);
+					}
+					keyRow.Item2.Add (b);
+					(i % 2 == 0 ? keyRow.Item3 : keyRow.Item4).PackStart (b);
 				}
-				ll.Add (b);
-				(i % 2 == 0 ? keys3 : keys4).PackStart (b);
+				keyRow.Item5 (keyRow.Item2.ToArray ());
 			}
-			low_buttons = ll.ToArray ();
 
 			high_button_states = new bool [high_buttons.Length];
 			low_button_states = new bool [low_buttons.Length];
@@ -238,13 +204,13 @@ namespace Xmmk
 			panel.KeyReleased += (o, e) => ProcessKey (false, e);			
 			
 			this.Content = panel;
+
+			panel.SetFocus (); // it is not focused when layout is changed.
 		}
 
 		Placement CreatePlacement (Widget c, double xAlign)
 		{
 			var p = new Placement () { Child = c, XAlign = xAlign };
-			//c.KeyPressed += (o, e) => ProcessKey (true, e);
-			//c.KeyReleased += (o, e) => ProcessKey (false, e);
 			return p;
 		}
 
@@ -360,10 +326,13 @@ namespace Xmmk
 				return; // no need to process repeated keys.
 
 			var b = low ? low_buttons [idx] : high_buttons [idx];
+			// since BackgroundColor does not work on GTK2, hack label instead.
 			if (down)
-				b.BackgroundColor = Colors.Gray;
+				//b.BackgroundColor = Colors.Gray;
+				b.Label = "*" + b.Label;
 			else
-				b.BackgroundColor = Colors.White;
+				//b.BackgroundColor = Colors.White;
+				b.Label = b.Label.Substring (1);
 			fl [idx] = down;
 
 			int nid = idx;
