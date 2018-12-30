@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Xwt;
 using Xwt.Drawing;
 using Commons.Music.Midi;
@@ -20,10 +19,13 @@ namespace Xmmk
 			foreach (string s in new StreamReader (typeof (MainWindow).Assembly.GetManifestResourceStream ("Xmmk.Resources.tonelist.txt")).ReadToEnd ().Split (chars, StringSplitOptions.RemoveEmptyEntries))
 				tone_list.Add (n++ + ":" + s);
 		}
+
+		MidiController midi = new MidiController ();
 		
 		public MainWindow ()
 		{
-			SetupMidiDevices ();
+			midi.SetupMidiDevices ();
+			midi.OutputDeviceChanged += (o, e) => SetupBankSelector ();
 			
 			SetupMenu ();
 			
@@ -39,17 +41,17 @@ namespace Xmmk
 			};
 			fileMenu.Items.Add (exit);
 
-			var changeLayout = new MenuItem ("_Change Layout");
-			var changeLayoutMenu = new Menu ();
-			changeLayout.SubMenu = changeLayoutMenu;
-			var layoutMenu = new Menu ();
-			layoutMenu.Items.Add (changeLayout);
+			var viewMenu = new Menu ();
+			var changeLayout = new MenuItem ("_Change Keyboard Layout");
 			var layoutPiano = new MenuItem ("Piano");
 			layoutPiano.Clicked += LayoutChanged;
 			var layoutChromaTone = new MenuItem ("Chromatone");
 			layoutChromaTone.Clicked += LayoutChanged;
-			changeLayoutMenu.Items.Add (layoutPiano);
-			changeLayoutMenu.Items.Add (layoutChromaTone);
+			var changeLayoutSubMenu = new Menu ();
+			changeLayout.SubMenu = changeLayoutSubMenu;
+			changeLayoutSubMenu.Items.Add (layoutPiano);
+			changeLayoutSubMenu.Items.Add (layoutChromaTone);
+			viewMenu.Items.Add (changeLayout);
 
 			var toneMenu = new Menu ();
 			for (int i = 0; i < tone_categories.Length; i++) {
@@ -65,22 +67,22 @@ namespace Xmmk
 			}
 
 			var deviceMenu = new Menu ();
-			var output = new MenuItem ("_Output");
+			var outputItem = new MenuItem ("_Output");
 			device_output_menu = new Menu ();
-			output.SubMenu = device_output_menu;
+			outputItem.SubMenu = device_output_menu;
 			SetupDeviceSelector (true);
 			//output.Clicked += delegate { SetupDeviceSelector (true); };
-			deviceMenu.Items.Add (output);
-			var input = new MenuItem ("_Input");
+			deviceMenu.Items.Add (outputItem);
+			var inputItem = new MenuItem ("_Input");
 			device_input_menu = new Menu ();
-			input.SubMenu = device_input_menu;
+			inputItem.SubMenu = device_input_menu;
 			SetupDeviceSelector (false);
 			//input.Clicked += delegate { SetupDeviceSelector (false); };
-			deviceMenu.Items.Add (input);
+			deviceMenu.Items.Add (inputItem);
 			
 			MainMenu = new Menu ();
 			MainMenu.Items.Add (new MenuItem ("_File") { SubMenu = fileMenu });
-			MainMenu.Items.Add (new MenuItem ("_Layout") { SubMenu = layoutMenu });
+			MainMenu.Items.Add (new MenuItem ("_View") { SubMenu = viewMenu });
 			MainMenu.Items.Add (new MenuItem ("_Tone") { SubMenu = toneMenu });
 			MainMenu.Items.Add (new MenuItem ("_Device") { SubMenu = deviceMenu });
 		}
@@ -100,8 +102,7 @@ namespace Xmmk
 
 		void ProgramSelected (object sender, EventArgs e)
 		{
-			program = tone_list.IndexOf (((MenuItem) sender).Label);
-			output.Send (new Byte [] { (byte) (MidiEvent.Program + channel), (byte) program }, 0, 2, 0);
+			midi.ChangeProgram (tone_list.IndexOf (((MenuItem)sender).Label));
 		}
 	
 		protected void OnQuitActionActivated (object sender, EventArgs e)
@@ -110,13 +111,6 @@ namespace Xmmk
 		}
 
 		#region MIDI configuration
-
-		IMidiOutput output;
-		IMidiInput input;
-		int channel = 1;
-		int octave = 4; // lowest
-		int transpose = 0;
-		int program = 0; // grand piano
 
 		Menu device_output_menu;
 		Menu device_input_menu;
@@ -130,56 +124,17 @@ namespace Xmmk
 				var devItem = new MenuItem ("_" + i++ + ": " + dev.Name);
 				devItem.Clicked += delegate {
 					if (isOutput)
-						ChangeOutputDevice (dev.Id);
+						midi.ChangeOutputDevice (dev.Id);
 					else
-						ChangeInputDevice (dev.Id);
+						midi.ChangeInputDevice (dev.Id);
 				};
 				menu.Items.Add (devItem);
 			}
 		}
 
-		void SetupMidiDevices ()
-		{
-			if (MidiAccessManager.Default.Outputs.Count () == 0) {
-				MessageDialog.ShowError ("No MIDI device was found.");
-				Application.Exit ();
-				return;
-			}
-
-			AppDomain.CurrentDomain.DomainUnload += delegate {
-				if (input != null)
-					input.Dispose ();
-				if (output != null)
-					output.Dispose ();
-			};
-
-			ChangeOutputDevice (MidiAccessManager.Default.Outputs.First ().Id);
-		}
-
-		void ChangeInputDevice (string deviceID)
-		{
-			if (input != null) {
-				input.Dispose ();
-				input = null;
-			}
-			input = MidiAccessManager.Default.OpenInputAsync (deviceID).Result;
-		}
-
-		void ChangeOutputDevice (string deviceID)
-		{
-			if (output != null) {
-				output.Dispose ();
-				output = null;
-			}
-			output = MidiAccessManager.Default.OpenOutputAsync (deviceID).Result;
-			output.Send (new byte [] { (byte) (MidiEvent.Program + channel), (byte) program }, 0, 2, 0);
-
-			SetupBankSelector ();
-		}
-		
 		void SetupBankSelector ()
 		{
-			var db = MidiModuleDatabase.Default.Resolve (output.Details.Name);
+			var db = midi.CurrentOutputMidiModule;
 			if (db != null && db.Instrument != null && db.Instrument.Maps.Count > 0) {
 				var map = db.Instrument.Maps [0];
 				foreach (var prog in map.Programs) {
@@ -240,7 +195,7 @@ namespace Xmmk
 			
 			int top = 70;
 
-			// offset 4, 10, 18 are not mapped, so skip those numbers
+			// (JP106) offset 4, 10, 18 are not mapped, so skip those numbers
 			var hl = new List<Button> ();
 			int labelStringIndex = key_labels.Length - 5;
 			for (int i = 0; i < keymap.HighKeys.Length; i++) {
@@ -351,11 +306,14 @@ namespace Xmmk
 		}
 		
 		KeyMap keymap = KeyMap.JP106; // FIXME: make it adjustable
-		
+
 		#endregion
 
 		#region Key Events
-		
+
+		int octave = 4; // lowest
+		int transpose = 0;
+
 		void ProcessKey (bool down, KeyEventArgs e)
 		{
 			var key = e.Key;
@@ -427,7 +385,7 @@ namespace Xmmk
 				note = (octave + (low ? 0 : 1)) * 12 - 4 + nid + transpose;
 
 			if (0 <= note && note <= 128)
-				output.Send (new byte [] { (byte)((down ? 0x90 : 0x80) + channel), (byte) note, 100 }, 0, 3, 0);
+				midi.NoteOn ((byte) note, (byte) (down ? 100 : 0));
 		}
 		
 		#endregion
