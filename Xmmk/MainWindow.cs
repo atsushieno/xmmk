@@ -405,10 +405,13 @@ namespace Xmmk
 
 		const int notepad_wrap_line_at = 80;
 		int last_octave = 4;
+		DateTime last_note_on_time = DateTime.MinValue;
 
 		string NoteNumberToName (int note)
 		{
-			string mml = high_button_states.Sum (v => v ? 1 : 0) > 1 || low_button_states.Sum (v => v ? 1 : 0) > 1 ? "&" : " ";
+			string mml = high_button_states.Sum (v => v ? 1 : 0) <= 1 && low_button_states.Sum (v => v ? 1 : 0) <= 1 ? " " :
+				DateTime.Now - last_note_on_time < TimeSpan.FromMilliseconds (100) ? "0" : "&";
+			last_note_on_time = DateTime.Now;
 			int newOctave = note / 12;
 			for (int diff = newOctave - last_octave; diff > 0; diff--)
 				mml += '>';
