@@ -172,7 +172,7 @@ namespace Xmmk
 			var headToolBox = new HBox ();
 
 			// device selector
-			var deviceSelectorBox = new ComboBox ();
+			var deviceSelectorBox = new ComboBox () { TooltipText = "Select MIDI output device/port" };
 			foreach (var output in midi.MidiAccess.Outputs)
 				deviceSelectorBox.Items.Add (output, output.Name);
 			deviceSelectorBox.SelectedIndex = current_device;
@@ -183,9 +183,9 @@ namespace Xmmk
 			headToolBox.PackStart (deviceSelectorBox);
 
 			// keyboard layout
-			var layoutSelectorBox = new ComboBox ();
-			layoutSelectorBox.Items.Add (false, "Piano");
-			layoutSelectorBox.Items.Add (true, "ChromaTone");
+			var layoutSelectorBox = new ComboBox () { TooltipText = "Select virtual keyboard layout" };
+			layoutSelectorBox.Items.Add (false, "Piano Layout");
+			layoutSelectorBox.Items.Add (true, "ChromaTone Layout");
 			layoutSelectorBox.SelectedIndex = current_layout;
 			layoutSelectorBox.SelectionChanged += (sender, e) => {
 				current_layout = layoutSelectorBox.SelectedIndex;
@@ -221,7 +221,7 @@ namespace Xmmk
 			foreach (var keyRow in keyRows) {
 				int labelStringIndex = key_labels.Length - 5;
 				for (int i = 0; i < keyRow.Item1.Length; i++) {
-					var b = new NoteButton ();
+					var b = new Button () { WidthRequest = btSize, CanGetFocus = false };
 					b.Label = key_labels [labelStringIndex % key_labels.Length];
 					labelStringIndex++;
 					if (!IsNotableIndex (i)) {
@@ -261,16 +261,6 @@ namespace Xmmk
 		Button [] low_buttons;
 		bool [] high_button_states;
 		bool [] low_button_states;
-
-		class NoteButton : Button
-		{
-			public NoteButton ()
-			{
-				WidthRequest = btSize;
-				//HeightRequest = btSize;
-				CanGetFocus = false;
-			}
-		}
 
 		// check if the key is a notable key (in mmk).
 		bool IsNotableIndex (int i)
