@@ -64,10 +64,12 @@ namespace Xmmk
 				OutputDeviceChanged (this, EventArgs.Empty);
 		}
 
-		public void ChangeProgram (int newProgram)
+		public void ChangeProgram (int newProgram, byte bankMsb, byte bankLsb)
 		{
 			Program = newProgram;
-			Output.Send (new Byte [] { (byte)(MidiEvent.Program + Channel), (byte)Program }, 0, 2, 0);
+			Output.Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelect, bankMsb }, 0, 3, 0);
+			Output.Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelectLsb, bankLsb }, 0, 3, 0);
+			Output.Send (new byte [] { (byte) (MidiEvent.Program + Channel), (byte)Program }, 0, 2, 0);
 
 			if (ProgramChanged != null)
 				ProgramChanged (this, EventArgs.Empty);

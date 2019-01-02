@@ -18,13 +18,15 @@ namespace Xmmk
 			this.Closed += (o, e) => Application.Exit ();
 
 			midi.SetupMidiDevices ();
-			midi.OutputDeviceChanged += (o, e) => UpdateBankSelectorMenu ();
+			midi.OutputDeviceChanged += (o, e) => SetupToneMenu ();
 			
 			SetupMenu ();
-			
+
 			SetupWindowContent ();
 		}
-		
+
+		Menu tone_menu;
+
 		void SetupMenu ()
 		{
 			var fileMenu = new Menu ();
@@ -34,22 +36,48 @@ namespace Xmmk
 			};
 			fileMenu.Items.Add (exit);
 
-			var toneMenu = new Menu ();
+			tone_menu = new Menu ();
+			SetupToneMenu ();
+
+			MainMenu = new Menu ();
+			MainMenu.Items.Add (new MenuItem ("_File") { SubMenu = fileMenu });
+			MainMenu.Items.Add (new MenuItem ("_Tone") { SubMenu = tone_menu });
+		}
+
+		void SetupToneMenu ()
+		{
+			tone_menu.Items.Clear ();
+
+			var moduleDB = midi.CurrentOutputMidiModule;
+			var instMapUnordered = (moduleDB == null || moduleDB.Instrument == null || moduleDB.Instrument.Maps.Count == 0) ? null : moduleDB.Instrument.Maps.First ();
+			var progs = instMapUnordered?.Programs?.OrderBy (p => p.Index);
+			int progsSearchFrom = 0;
 			for (int i = 0; i < GeneralMidi.InstrumentCategories.Length; i++) {
 				var item = new MenuItem (GeneralMidi.InstrumentCategories [i]);
 				var catMenu = new Menu ();
 				for (int j = 0; j < 8; j++) {
-					var tone = new MenuItem (GeneralMidi.InstrumentNames [i * 8 + j]);
-					tone.Clicked += ProgramSelected;
+					int index = i * 8 + j;
+					var prog = progs?.Skip (progsSearchFrom)?.First (p => p.Index == index);
+					var name = prog != null ? prog.Name : GeneralMidi.InstrumentNames [index];
+					var tone = new MenuItem (name);
+					if (prog != null && prog.Banks != null && prog.Banks.Any ()) {
+						var bankMenu = new Menu ();
+						foreach (var bank in prog.Banks) {
+							var bankItem = new MenuItem (bank.Name);
+							bankItem.Tag = new Tuple<int,MidiBankDefinition> (index,bank);
+							bankItem.Clicked += ProgramSelected;
+							bankMenu.Items.Add (bankItem);
+						}
+						tone.SubMenu = bankMenu;
+					} else {
+						tone.Tag = index;
+						tone.Clicked += ProgramSelected;
+					}
 					catMenu.Items.Add (tone);
 				}
 				item.SubMenu = catMenu;
-				toneMenu.Items.Add (item);
+				tone_menu.Items.Add (item);
 			}
-
-			MainMenu = new Menu ();
-			MainMenu.Items.Add (new MenuItem ("_File") { SubMenu = fileMenu });
-			MainMenu.Items.Add (new MenuItem ("_Tone") { SubMenu = toneMenu });
 		}
 
 		private void KeyboardLayoutChanged (object sender, EventArgs e)
@@ -65,33 +93,12 @@ namespace Xmmk
 
 		void ProgramSelected (object sender, EventArgs e)
 		{
-			midi.ChangeProgram (Array.IndexOf (GeneralMidi.InstrumentNames, ((MenuItem)sender).Label));
-		}
-
-		// TODO: implement
-		void UpdateBankSelectorMenu ()
-		{
-			var db = midi.CurrentOutputMidiModule;
-			if (db != null && db.Instrument != null && db.Instrument.Maps.Count > 0) {
-				var map = db.Instrument.Maps [0];
-				foreach (var prog in map.Programs) {
-					/*
-					var mcat = tone_menu.MenuItems [prog.Index / 8];
-					var mprg = mcat.MenuItems [prog.Index % 8];
-					mprg.MenuItems.Clear ();
-					foreach (var bank in prog.Banks) {
-						var mi = new MenuItem (String.Format ("{0}:{1} {2}", bank.Msb, bank.Lsb, bank.Name)) { Tag = bank };
-						mi.Select += delegate {
-							var mbank = (MidiBankDefinition) mi.Tag;
-							output.Write (0, new MidiMessage (SmfEvent.CC + channel, SmfCC.BankSelect, mbank.Msb));
-							output.Write (0, new MidiMessage (SmfEvent.CC + channel, SmfCC.BankSelectLsb, mbank.Lsb));
-							output.Write (0, new MidiMessage (SmfEvent.Program + channel, (int) mi.Parent.Tag, 0));
-						};
-						mprg.MenuItems.Add (mi);
-					}
-				*/
-				}
-			}
+			var mi = (MenuItem) sender;
+			var bank = mi.Tag as Tuple<int, MidiBankDefinition>;
+			if (bank != null)
+				midi.ChangeProgram (bank.Item1, (byte) bank.Item2.Msb, (byte) bank.Item2.Lsb);
+			else
+				midi.ChangeProgram ((byte) (int) mi.Tag, 0, 0);
 		}
 
 		#region Keyboard
