@@ -25,7 +25,7 @@ namespace Xmmk
 			SetupWindowContent ();
 		}
 
-		Menu tone_menu;
+		Menu tone_menu, keyboard_menu;
 
 		void SetupMenu ()
 		{
@@ -39,9 +39,21 @@ namespace Xmmk
 			tone_menu = new Menu ();
 			SetupToneMenu ();
 
+			keyboard_menu = new Menu ();
+			foreach (var km in available_keymaps) {
+				var mi = new MenuItem (km.Name);
+				mi.Clicked += (sender, e) => {
+					keyboard.Clear ();
+					this.keymap = km;
+					FillKeyboard (keyboard);
+				};
+				keyboard_menu.Items.Add (mi);
+			}
+
 			MainMenu = new Menu ();
 			MainMenu.Items.Add (new MenuItem ("_File") { SubMenu = fileMenu });
 			MainMenu.Items.Add (new MenuItem ("_Tone") { SubMenu = tone_menu });
+			MainMenu.Items.Add (new MenuItem ("_Keyboard") { SubMenu = keyboard_menu });
 		}
 
 		void SetupToneMenu ()
@@ -80,7 +92,7 @@ namespace Xmmk
 			}
 		}
 
-		private void KeyboardLayoutChanged (object sender, EventArgs e)
+		void KeyboardLayoutChanged (object sender, EventArgs e)
 		{
 			var menuItem = (MenuItem) sender;
 			if (menuItem.Label == "Piano") {
@@ -141,25 +153,27 @@ namespace Xmmk
 		}
 
 		TextEntry notepad;
+		VBox keyboard;
+		VBox entire_content_box;
 
 		void SetupWindowContent ()
 		{
-			var entireContentBox = new VBox ();
+			entire_content_box = new VBox ();
 
 			var headToolBox = SetupHeadToolBox ();
-			entireContentBox.PackStart (headToolBox);
+			entire_content_box.PackStart (headToolBox);
 
-			var keyboard = SetupKeyboard ();
-			entireContentBox.PackStart (keyboard);
+			keyboard = SetupKeyboard ();
+			entire_content_box.PackStart (keyboard);
 
 			notepad = new TextEntry () {
 				MultiLine = true,
 				HeightRequest = 200,
 				VerticalPlacement = WidgetPlacement.Start,		 
 				CursorPosition = 0 };
-			entireContentBox.PackStart (notepad);
+			entire_content_box.PackStart (notepad);
 
-			this.Content = entireContentBox;
+			this.Content = entire_content_box;
 
 			keyboard.SetFocus (); // it is not focused when layout is changed.
 		}
@@ -208,7 +222,13 @@ namespace Xmmk
 
 		VBox SetupKeyboard ()
 		{
-			var panel = new VBox () { CanGetFocus = true };
+			var panel = new VBox () { Name = "keyboard", CanGetFocus = true };
+			FillKeyboard (panel);
+			return panel;
+		}
+
+		VBox FillKeyboard (VBox panel)
+		{
 			HBox keys1 = new HBox (), keys2 = new HBox (), keys3 = new HBox (), keys4 = new HBox ();
 
 			var keyRows = new List<Tuple<string, List<Button>, HBox, HBox, Action<Button[]>>> ();
@@ -291,19 +311,25 @@ namespace Xmmk
 			// [LEFT] - <del>transpose decrease</del>
 			// [RIGHT] - <del>transpose increase</del>
 
-			public static readonly KeyMap JP106 = new KeyMap ("AZSXDCFVGBHNJMK\xbcL\xbe\xbb\xbf\xba\xe2\xdd ", "1Q2W3E4R5T6Y7U8I9O0P\xbd\xc0\xde\xdb\xdc");
+			public static readonly KeyMap MostLikelyGenericAscii = new KeyMap ("Generic ASCII", "AZSXDCFVGBHNJMK\xbcL\xbe\xbb\xbf\xba\xe2\xdd ", "1Q2W3E4R5T6Y7U8I9O0P\xbd\xc0\xde\xdb\xdc");
 
-			public KeyMap (string lowKeys, string highKeys)
+			public static readonly KeyMap JP106 = new KeyMap ("JP106", "AZSXDCFVGBHNJMK,L.;/:\\", "1Q2W3E4R5T6Y7U8I9O0P-@^");
+
+			public KeyMap (string name, string lowKeys, string highKeys)
 			{
+				Name = name;
 				LowKeys = lowKeys;
 				HighKeys = highKeys;
 			}
 
-			public readonly string LowKeys;
-			public readonly string HighKeys;
+			public string Name { get; private set; }
+			public string LowKeys { get; private set; }
+			public string HighKeys { get; private set; }
 		}
-		
-		KeyMap keymap = KeyMap.JP106; // FIXME: make it adjustable
+
+		readonly KeyMap [] available_keymaps = { KeyMap.MostLikelyGenericAscii, KeyMap.JP106 };
+
+		KeyMap keymap = KeyMap.MostLikelyGenericAscii;
 
 		#endregion
 
