@@ -406,7 +406,7 @@ namespace Xmmk
 
 			int note;
 			if (ChromaTone)
-				note = (octave + (low ? 0 : 1)) * 12 - 5 + nid + (low ? 2 : 0) + transpose;
+				note = (octave + (low ? 0 : 1)) * 12 - 5 + nid + transpose;
 			else
 				note = (octave + (low ? 0 : 1)) * 12 - 4 + nid + transpose;
 
