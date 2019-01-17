@@ -71,11 +71,11 @@ namespace Xmmk
 					int index = i * 8 + j;
 					var prog = progs?.Skip (progsSearchFrom)?.First (p => p.Index == index);
 					var name = prog != null ? prog.Name : GeneralMidi.InstrumentNames [index];
-					var tone = new MenuItem (name);
+					var tone = new MenuItem ($"{index}:{name}");
 					if (prog != null && prog.Banks != null && prog.Banks.Any ()) {
 						var bankMenu = new Menu ();
 						foreach (var bank in prog.Banks) {
-							var bankItem = new MenuItem (bank.Name);
+							var bankItem = new MenuItem ($"{bank.Msb},{bank.Lsb}:{bank.Name}");
 							bankItem.Tag = new Tuple<int,MidiBankDefinition> (index,bank);
 							bankItem.Clicked += ProgramSelected;
 							bankMenu.Items.Add (bankItem);
