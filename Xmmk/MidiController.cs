@@ -14,12 +14,14 @@ namespace Xmmk
 
 		public IMidiAccess MidiAccess => MidiAccessManager.Default;
 
-		public MidiModuleDefinition CurrentOutputMidiModule => MidiModuleDatabase.Default.Resolve (Output.Details.Name);
+		public MidiModuleDefinition CurrentOutputMidiModule => MidiModuleOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name);
 
 		public event EventHandler ProgramChanged;
 		public event EventHandler InputDeviceChanged;
 		public event EventHandler OutputDeviceChanged;
 		public event EventHandler<NoteEventArgs> NoteOnReceived;
+		
+		public MidiModuleDefinition MidiModuleOverride { get; set; }
 
 		public void SetupMidiDevices ()
 		{

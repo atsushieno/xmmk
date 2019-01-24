@@ -73,6 +73,7 @@ namespace Xmmk
 				overrideDB.SubMenu.Items.Add (module);
 			}
 			tone_menu.Items.Add (overrideDB);
+			tone_menu.Items.Add (new SeparatorMenuItem ());
 
 			var moduleDB = midi.CurrentOutputMidiModule;
 			var instMapUnordered = (moduleDB == null || moduleDB.Instrument == null || moduleDB.Instrument.Maps.Count == 0) ? null : moduleDB.Instrument.Maps.First ();
