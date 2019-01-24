@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
 using Xwt;
 using Xwt.Drawing;
 using Commons.Music.Midi;
 
 using Keys = Xwt.Key;
+using Label = Xwt.Label;
 
 namespace Xmmk
 {
@@ -59,6 +61,18 @@ namespace Xmmk
 		void SetupToneMenu ()
 		{
 			tone_menu.Items.Clear ();
+			
+			var overrideDB = new MenuItem ("_Override MIDI module database");
+			overrideDB.SubMenu = new Menu ();
+			foreach (var db in MidiModuleDatabase.Default.All ()) {
+				var module = new MenuItem (db.Name);
+				module.Clicked += delegate {
+					midi.MidiModuleOverride = db;
+					SetupToneMenu ();
+				};
+				overrideDB.SubMenu.Items.Add (module);
+			}
+			tone_menu.Items.Add (overrideDB);
 
 			var moduleDB = midi.CurrentOutputMidiModule;
 			var instMapUnordered = (moduleDB == null || moduleDB.Instrument == null || moduleDB.Instrument.Maps.Count == 0) ? null : moduleDB.Instrument.Maps.First ();
@@ -72,7 +86,7 @@ namespace Xmmk
 					var prog = progs?.Skip (progsSearchFrom)?.First (p => p.Index == index);
 					var name = prog != null ? prog.Name : GeneralMidi.InstrumentNames [index];
 					var tone = new MenuItem ($"{index}:{name}");
-					if (prog != null && prog.Banks != null && prog.Banks.Any ()) {
+					if (prog != null && prog.Banks != null && prog.Banks.Skip (1).Any ()) { // no need for only one bank
 						var bankMenu = new Menu ();
 						foreach (var bank in prog.Banks) {
 							var bankItem = new MenuItem ($"{bank.Msb},{bank.Lsb}:{bank.Name}");
