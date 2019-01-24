@@ -66,18 +66,22 @@ namespace Xmmk
 			overrideDB.SubMenu = new Menu ();
 			foreach (var db in MidiModuleDatabase.Default.All ()) {
 				var module = new MenuItem (db.Name);
-				module.Clicked += delegate {
-					midi.MidiModuleOverride = db;
-					SetupToneMenu ();
-				};
+				module.SubMenu = new Menu ();
+				foreach (var map in db.Instrument.Maps) {
+					var mapItem = new MenuItem (map.Name);
+					mapItem.Clicked += delegate {
+						midi.MidiInstrumentMapOverride = map;
+						SetupToneMenu ();
+					};
+					module.SubMenu.Items.Add (mapItem);
+				}
 				overrideDB.SubMenu.Items.Add (module);
 			}
 			tone_menu.Items.Add (overrideDB);
 			tone_menu.Items.Add (new SeparatorMenuItem ());
 
-			var moduleDB = midi.CurrentOutputMidiModule;
-			var instMapUnordered = (moduleDB == null || moduleDB.Instrument == null || moduleDB.Instrument.Maps.Count == 0) ? null : moduleDB.Instrument.Maps.First ();
-			var progs = instMapUnordered?.Programs?.OrderBy (p => p.Index);
+			var instMap = midi.CurrentInstrumentMap;
+			var progs = instMap?.Programs?.OrderBy (p => p.Index);
 			int progsSearchFrom = 0;
 			for (int i = 0; i < GeneralMidi.InstrumentCategories.Length; i++) {
 				var item = new MenuItem (GeneralMidi.InstrumentCategories [i]);
