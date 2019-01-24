@@ -1,6 +1,8 @@
 bin
 obj
 .vs
+.idea
 *.userprefs
 *.csproj.user
+*.DotSettings.user
 packages
