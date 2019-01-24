@@ -68,9 +68,17 @@ namespace Xmmk
 				var module = new MenuItem (db.Name);
 				module.SubMenu = new Menu ();
 				foreach (var map in db.Instrument.Maps) {
-					var mapItem = new MenuItem (map.Name);
+					var mapItem = new MenuItem ("[Inst] " + map.Name);
 					mapItem.Clicked += delegate {
 						midi.MidiInstrumentMapOverride = map;
+						SetupToneMenu ();
+					};
+					module.SubMenu.Items.Add (mapItem);
+				}
+				foreach (var map in db.Instrument.DrumMaps) {
+					var mapItem = new MenuItem ("[Drum] " + map.Name);
+					mapItem.Clicked += delegate {
+						midi.MidiDrumMapOverride = map;
 						SetupToneMenu ();
 					};
 					module.SubMenu.Items.Add (mapItem);
@@ -80,17 +88,17 @@ namespace Xmmk
 			tone_menu.Items.Add (overrideDB);
 			tone_menu.Items.Add (new SeparatorMenuItem ());
 
-			var instMap = midi.CurrentInstrumentMap;
+			var instMap = midi.Channel == 9 ? midi.CurrentDrumMap : midi.CurrentInstrumentMap;
 			var progs = instMap?.Programs?.OrderBy (p => p.Index);
 			int progsSearchFrom = 0;
 			for (int i = 0; i < GeneralMidi.InstrumentCategories.Length; i++) {
-				var item = new MenuItem (GeneralMidi.InstrumentCategories [i]);
+				var item = new MenuItem (midi.Channel == 9 ? "(DRUM)" : GeneralMidi.InstrumentCategories [i]);
 				var catMenu = new Menu ();
 				for (int j = 0; j < 8; j++) {
 					int index = i * 8 + j;
-					var prog = progs?.Skip (progsSearchFrom)?.First (p => p.Index == index);
-					var name = prog != null ? prog.Name : GeneralMidi.InstrumentNames [index];
-					var tone = new MenuItem ($"{index}: {name}");
+					var prog = progs?.Skip (progsSearchFrom)?.FirstOrDefault (p => p.Index == index);
+					var name = prog != null ? prog.Name : midi.Channel == 9 ? GeneralMidi.DrumKitsGM2.Length > index ? GeneralMidi.DrumKitsGM2 [index] : "" : GeneralMidi.InstrumentNames [index];
+					var tone = new MenuItem ($"{index}: {name}") { Sensitive = name != "" };
 					if (prog != null && prog.Banks != null && prog.Banks.Skip (1).Any ()) { // no need for only one bank
 						var bankMenu = new Menu ();
 						foreach (var bank in prog.Banks) {
@@ -225,6 +233,17 @@ namespace Xmmk
 				ChromaTone = (bool) layoutSelectorBox.SelectedItem;
 			};
 			headToolBox.PackStart (layoutSelectorBox);
+			
+			headToolBox.PackStart (new Label {Text = "Ch."});
+			var channelSelectorBox = new ComboBox { TooltipText = "Set MIDI output channel. 10 for drums."};
+			foreach (var n in Enumerable.Range(0, 15))
+				channelSelectorBox.Items.Add ((n + 1).ToString ());
+			channelSelectorBox.SelectedIndex = midi.Channel;
+			channelSelectorBox.SelectionChanged += delegate {
+				midi.Channel = channelSelectorBox.SelectedIndex;
+				SetupToneMenu ();
+			};
+			headToolBox.PackStart (channelSelectorBox);
 
 			// octave and transpose
 			this.octave_label = new Label ();

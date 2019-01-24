@@ -14,7 +14,8 @@ namespace Xmmk
 
 		public IMidiAccess MidiAccess => MidiAccessManager.Default;
 
-		public MidiInstrumentMap CurrentInstrumentMap => MidiInstrumentMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.Maps?.First ();
+		public MidiInstrumentMap CurrentInstrumentMap => MidiInstrumentMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.Maps?.FirstOrDefault ();
+		public MidiInstrumentMap CurrentDrumMap => MidiDrumMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.DrumMaps?.FirstOrDefault ();
 
 		public event EventHandler ProgramChanged;
 		public event EventHandler InputDeviceChanged;
@@ -22,6 +23,7 @@ namespace Xmmk
 		public event EventHandler<NoteEventArgs> NoteOnReceived;
 		
 		public MidiInstrumentMap MidiInstrumentMapOverride { get; set; }
+		public MidiInstrumentMap MidiDrumMapOverride { get; set; }
 
 		public void SetupMidiDevices ()
 		{
