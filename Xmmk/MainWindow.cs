@@ -19,6 +19,9 @@ namespace Xmmk
 		{
 			this.Closed += (o, e) => Application.Exit ();
 
+			this.Title = "Virtual MIDI keyboard Xmmk";
+			Icon = Image.FromResource (GetType ().Assembly, "xmmk.png");
+
 			midi.SetupMidiDevices ();
 			midi.OutputDeviceChanged += (o, e) => SetupToneMenu ();
 			
