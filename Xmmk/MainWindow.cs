@@ -179,7 +179,8 @@ namespace Xmmk
 			}
 		}
 
-		TextEntry notepad;
+		TextEntry mml_record_pad;
+		TextEntry mml_exec_pad;
 		VBox keyboard;
 		VBox entire_content_box;
 
@@ -193,12 +194,33 @@ namespace Xmmk
 			keyboard = SetupKeyboard ();
 			entire_content_box.PackStart (keyboard);
 
-			notepad = new TextEntry () {
+			// MML runner
+			var mml_exec_box = new HBox ();
+			var mml_exec_button = new Button {
+				Label = "Run",
+				TooltipText = "Compile and run MML"
+			};
+			mml_exec_button.Clicked += delegate { midi.ExecuteMml (mml_exec_pad.Text); };
+			mml_exec_box.PackStart (mml_exec_button, false);
+			mml_exec_pad = new TextEntry () {
+				MultiLine = true,
+				HeightRequest = 50,
+				VerticalPlacement = WidgetPlacement.Start,
+				CursorPosition = 0,
+				TooltipText = "You can send arbitrary MIDI messages in mugene MML syntax (track and channels are automatically prepended)",
+			};
+			mml_exec_box.PackStart (mml_exec_pad, true);
+			entire_content_box.PackStart (mml_exec_box);
+
+			// MML recording pad
+			mml_record_pad = new TextEntry () {
 				MultiLine = true,
 				HeightRequest = 200,
 				VerticalPlacement = WidgetPlacement.Start,		 
-				CursorPosition = 0 };
-			entire_content_box.PackStart (notepad);
+				CursorPosition = 0,
+				TooltipText = "Your note on/off inputs are recorded here",
+			};
+			entire_content_box.PackStart (mml_record_pad);
 
 			this.Content = entire_content_box;
 
@@ -233,7 +255,8 @@ namespace Xmmk
 				ChromaTone = (bool) layoutSelectorBox.SelectedItem;
 			};
 			headToolBox.PackStart (layoutSelectorBox);
-			
+
+			// channel selector
 			headToolBox.PackStart (new Label {Text = "Ch."});
 			var channelSelectorBox = new ComboBox { TooltipText = "Set MIDI output channel. 10 for drums."};
 			foreach (var n in Enumerable.Range(0, 15))
@@ -451,14 +474,14 @@ namespace Xmmk
 			if (0 <= note && note <= 128) {
 				if (down) {
 					var mml = NoteNumberToName (note);
-					int newPosition = notepad.CursorPosition + mml.Length;
-					notepad.Text = notepad.Text.Insert (notepad.CursorPosition, mml);
-					if (notepad.Text.Length - notepad.Text.LastIndexOf ('\n') > notepad_wrap_line_at) {
-						notepad.Text += "\r\n";
+					int newPosition = mml_record_pad.CursorPosition + mml.Length;
+					mml_record_pad.Text = mml_record_pad.Text.Insert (mml_record_pad.CursorPosition, mml);
+					if (mml_record_pad.Text.Length - mml_record_pad.Text.LastIndexOf ('\n') > notepad_wrap_line_at) {
+						mml_record_pad.Text += "\r\n";
 						newPosition++;
 						newPosition++;
 					}
-					notepad.CursorPosition = newPosition;
+					mml_record_pad.CursorPosition = newPosition;
 				}
 				midi.NoteOn ((byte)note, (byte)(down ? 100 : 0));
 			}

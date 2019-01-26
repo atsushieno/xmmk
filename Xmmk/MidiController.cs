@@ -1,7 +1,10 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Xwt;
 using Commons.Music.Midi;
+using Commons.Music.Midi.Mml;
 
 namespace Xmmk
 {
@@ -90,6 +93,37 @@ namespace Xmmk
 		{
 			public int Note { get; set; }
 			public int Velocity { get; set; }
+		}
+
+		public void ExecuteMml (string mml)
+		{
+			Task.Run (() => DoExecuteMml (mml));
+		}
+
+		void DoExecuteMml (string mml)
+		{
+			StartNewSong (CompileMmlToSong (mml));
+		}
+		
+		MidiMusic CompileMmlToSong (string mml)
+		{
+			mml += $"0 CH{Channel + 1} {mml}";
+			
+			var compiler = new MmlCompiler ();
+			var midiStream = new MemoryStream ();
+			var source = new MmlInputSource ("", new StringReader (mml));
+			compiler.Compile (false, Enumerable.Repeat (source, 1).ToArray (), null, midiStream, false);
+			return MidiMusic.Read (new MemoryStream (midiStream.ToArray ()));
+		}
+
+		MidiPlayer mml_music_player;
+		
+		void StartNewSong (MidiMusic music)
+		{
+			if (mml_music_player != null)
+				mml_music_player.Dispose ();
+			mml_music_player = new MidiPlayer (music, Output);
+			mml_music_player.PlayAsync ();
 		}
 	}
 }

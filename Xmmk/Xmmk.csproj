@@ -34,6 +34,18 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="alsa-sharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\packages\managed-midi.1.1.0\lib\net45\alsa-sharp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="mugene, Version=1.0.6699.5397, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\packages\mugene.1.2.0\lib\net45\mugene.exe</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="mugenelib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\packages\mugene.1.2.0\lib\net45\mugenelib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="Xwt">
       <HintPath>..\packages\Xwt.0.2.143\lib\net40\Xwt.dll</HintPath>
