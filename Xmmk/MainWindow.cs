@@ -194,6 +194,8 @@ namespace Xmmk
 			var headToolBox = SetupHeadToolBox ();
 			entire_content_box.PackStart (headToolBox);
 
+			if (keyboard != null)
+				entire_content_box.Remove (keyboard);
 			keyboard = SetupKeyboard ();
 			entire_content_box.PackStart (keyboard);
 
@@ -287,6 +289,9 @@ namespace Xmmk
 		VBox SetupKeyboard ()
 		{
 			var panel = new VBox () { Name = "keyboard", CanGetFocus = true };
+			panel.KeyPressed += (o, e) => ProcessKey (true, e);
+			panel.KeyReleased += (o, e) => ProcessKey (false, e);
+
 			FillKeyboard (panel);
 			return panel;
 		}
@@ -327,9 +332,6 @@ namespace Xmmk
 			panel.PackStart (CreatePlacement (keys2, 0.33));
 			panel.PackStart (CreatePlacement (keys3, 0.66));
 			panel.PackStart (CreatePlacement (keys4, 1.0));
-
-			panel.KeyPressed += (o, e) => ProcessKey (true, e);
-			panel.KeyReleased += (o, e) => ProcessKey (false, e);
 
 			return panel;
 		}
