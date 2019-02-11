@@ -43,7 +43,7 @@ namespace Xmmk
 
 			tone_menu = new Menu ();
 			SetupToneMenu ();
-
+			
 			keyboard_menu = new Menu ();
 			foreach (var km in available_keymaps) {
 				var mi = new MenuItem (km.Name);
@@ -59,6 +59,20 @@ namespace Xmmk
 			MainMenu.Items.Add (new MenuItem ("_File") { SubMenu = fileMenu });
 			MainMenu.Items.Add (new MenuItem ("_Tone") { SubMenu = tone_menu });
 			MainMenu.Items.Add (new MenuItem ("_Keyboard") { SubMenu = keyboard_menu });
+			
+			var devices = new MenuItem ("_Devices");
+			var devMenu = new Menu ();
+			devices.Clicked += delegate {
+				devMenu.Items.Clear ();
+				foreach (var output in midi.MidiAccess.Outputs) {
+					var item = new CheckBoxMenuItem (output.Name)
+						{ Tag = output.Id, Checked = output.Id == midi.CurrentDeviceId };
+					item.Clicked += delegate { midi.ChangeOutputDevice ((string) item.Tag); };
+					devMenu.Items.Add (item);
+				};
+			};
+			devices.SubMenu = devMenu;
+			MainMenu.Items.Add (devices);
 		}
 
 		void SetupToneMenu ()
@@ -232,23 +246,11 @@ namespace Xmmk
 			keyboard.SetFocus (); // it is not focused when layout is changed.
 		}
 
-		int current_device = 0;
 		int current_layout = 0;
 
 		HBox SetupHeadToolBox ()
 		{
 			var headToolBox = new HBox ();
-
-			// device selector
-			var deviceSelectorBox = new ComboBox () { TooltipText = "Select MIDI output device/port" };
-			foreach (var output in midi.MidiAccess.Outputs)
-				deviceSelectorBox.Items.Add (output, output.Name);
-			deviceSelectorBox.SelectedIndex = current_device;
-			deviceSelectorBox.SelectionChanged += (sender, e) => {
-				current_device = deviceSelectorBox.SelectedIndex;
-				midi.ChangeOutputDevice (((IMidiPortDetails)deviceSelectorBox.SelectedItem).Id);
-			};
-			headToolBox.PackStart (deviceSelectorBox);
 
 			// keyboard layout
 			var layoutSelectorBox = new ComboBox () { TooltipText = "Select virtual keyboard layout" };

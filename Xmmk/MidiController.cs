@@ -16,6 +16,8 @@ namespace Xmmk
 		public int Program { get; private set; } = 0; // grand piano
 
 		public IMidiAccess MidiAccess => MidiAccessManager.Default;
+		
+		public string CurrentDeviceId { get; set; }
 
 		public MidiInstrumentMap CurrentInstrumentMap => MidiInstrumentMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.Maps?.FirstOrDefault ();
 		public MidiInstrumentMap CurrentDrumMap => MidiDrumMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.DrumMaps?.FirstOrDefault ();
@@ -67,6 +69,7 @@ namespace Xmmk
 			Output = MidiAccessManager.Default.OpenOutputAsync (deviceID).Result;
 			Output.Send (new byte [] { (byte)(MidiEvent.Program + Channel), (byte)Program }, 0, 2, 0);
 
+			CurrentDeviceId = deviceID;
 			if (OutputDeviceChanged != null)
 				OutputDeviceChanged (this, EventArgs.Empty);
 		}
