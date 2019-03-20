@@ -260,19 +260,27 @@ namespace Xmmk
 			int playerStartIndex = player_list.Children.Count ();
 
 			midi.MusicListingChanged += (o, e) => {
-				var widgetIndex = e.Index + playerStartIndex;
-				if (player_list.Children.Count () > widgetIndex)
-					player_list.Remove (player_list.Children.ElementAt (widgetIndex));
-				var hbox = new HBox ();
-				var label = new Label (e.Index.ToString ());
-				hbox.PackStart (label);
-				var button = new Button ("STOP");
-				button.Clicked += (_, __) => midi.StopPlayer (e.Index);
-				hbox.PackStart (button);
-				player_list.PackStart (hbox);
-				// FIXME: not working
-				if (player_list_selector.Items.Count <= e.Index)
-					player_list_selector.Items.Insert (e.Index, e.Index);
+				Application.InvokeAsync (() => {
+					var widgetIndex = e.Index + playerStartIndex;
+					var items = player_list.Children.ToList ();
+					if (widgetIndex < player_list.Children.Count ())
+						items.RemoveAt (widgetIndex);
+
+					player_list.Clear ();
+					var hbox = new HBox ();
+					var label = new Label (e.Index.ToString ());
+					hbox.PackStart (label);
+					var button = new Button ("STOP");
+					button.Clicked += (_, __) => midi.StopPlayer (e.Index);
+					hbox.PackStart (button);
+					items.Insert (widgetIndex, hbox);
+
+					foreach (var item in items)
+						player_list.PackStart (item);
+
+					if (player_list_selector.Items.Count - 1 <= e.Index)
+						player_list_selector.Items.Insert (e.Index, e.Index);
+				});
 			};
 			
 			entire_content_box.PackStart (player_list);
