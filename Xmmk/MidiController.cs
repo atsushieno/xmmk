@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -98,16 +99,44 @@ namespace Xmmk
 			public int Velocity { get; set; }
 		}
 
-		public void ExecuteMml (string mml)
+		public void StopPlayer (int playerIndex)
 		{
-			Task.Run (() => DoExecuteMml (mml));
+			Task.Run (() => DoStopPlayer (playerIndex));
 		}
 
-		void DoExecuteMml (string mml)
+		void DoStopPlayer (int playerIndex)
 		{
-			StartNewSong (CompileMmlToSong (mml));
+			if (players.Count > playerIndex)
+				players [playerIndex].Stop ();
+		}
+
+		public void ExecuteMml (string mml, int playerIndex)
+		{
+			Task.Run (() => DoExecuteMml (mml, playerIndex));
+		}
+
+		void DoExecuteMml (string mml, int playerIndex)
+		{
+			var music = CompileMmlToSong (mml);
+			StartNewSong (playerIndex, music);
 		}
 		
+		readonly List<MidiPlayer> players = new List<MidiPlayer> ();
+
+		public event EventHandler<PlayerListingChangedEventArgs> MusicListingChanged;
+
+		public class PlayerListingChangedEventArgs : EventArgs
+		{
+			public PlayerListingChangedEventArgs (int index, MidiMusic music)
+			{
+				Index = index;
+				Music = music;
+			}
+			
+			public int Index { get; private set; }
+			public MidiMusic Music { get; private set; }
+		}
+
 		MidiMusic CompileMmlToSong (string mml)
 		{
 			mml += $"0 CH{Channel + 1} {mml}";
@@ -119,14 +148,21 @@ namespace Xmmk
 			return MidiMusic.Read (new MemoryStream (midiStream.ToArray ()));
 		}
 
-		MidiPlayer mml_music_player;
-		
-		void StartNewSong (MidiMusic music)
+		void StartNewSong (int playerIndex, MidiMusic music)
 		{
-			if (mml_music_player != null)
-				mml_music_player.Dispose ();
+			MidiPlayer mml_music_player = null;
+		
+			if (players.Count > playerIndex)
+				players [playerIndex].Dispose ();
+			
 			mml_music_player = new MidiPlayer (music, Output);
 			mml_music_player.PlayAsync ();
+			if (MusicListingChanged != null)
+				MusicListingChanged (this, new PlayerListingChangedEventArgs (playerIndex, music));
+			if (players.Count > playerIndex)
+				players [playerIndex] = mml_music_player;
+			else
+				players.Add (mml_music_player);
 		}
 	}
 }

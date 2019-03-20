@@ -199,19 +199,25 @@ namespace Xmmk
 		TextEntry mml_record_pad;
 		TextEntry mml_exec_pad;
 		VBox keyboard;
-		VBox entire_content_box;
+		HBox entire_content_box;
+		VBox keyboard_content_box;
+		VBox player_list;
+		ComboBox player_list_selector;
 
 		void SetupWindowContent ()
 		{
-			entire_content_box = new VBox ();
+			entire_content_box = new HBox ();
+			keyboard_content_box = new VBox ();
 
 			var headToolBox = SetupHeadToolBox ();
-			entire_content_box.PackStart (headToolBox);
+			keyboard_content_box.PackStart (headToolBox);
+			
+			entire_content_box.PackStart (keyboard_content_box);
 
 			if (keyboard != null)
 				entire_content_box.Remove (keyboard);
 			keyboard = SetupKeyboard ();
-			entire_content_box.PackStart (keyboard);
+			keyboard_content_box.PackStart (keyboard);
 
 			// MML runner
 			var mml_exec_box = new HBox ();
@@ -219,7 +225,7 @@ namespace Xmmk
 				Label = "Run",
 				TooltipText = "Compile and run MML"
 			};
-			mml_exec_button.Clicked += delegate { midi.ExecuteMml (mml_exec_pad.Text); };
+			mml_exec_button.Clicked += delegate { midi.ExecuteMml (mml_exec_pad.Text, player_list_selector.SelectedIndex); };
 			mml_exec_box.PackStart (mml_exec_button, false);
 			mml_exec_pad = new TextEntry () {
 				MultiLine = true,
@@ -229,7 +235,7 @@ namespace Xmmk
 				TooltipText = "You can send arbitrary MIDI messages in mugene MML syntax (track and channels are automatically prepended)",
 			};
 			mml_exec_box.PackStart (mml_exec_pad, true);
-			entire_content_box.PackStart (mml_exec_box);
+			keyboard_content_box.PackStart (mml_exec_box);
 
 			// MML recording pad
 			mml_record_pad = new TextEntry () {
@@ -239,8 +245,38 @@ namespace Xmmk
 				CursorPosition = 0,
 				TooltipText = "Your note on/off inputs are recorded here",
 			};
-			entire_content_box.PackStart (mml_record_pad);
+			keyboard_content_box.PackStart (mml_record_pad);
 
+			// Player list
+			player_list = new VBox ();
+			var playerListHeader = new HBox ();
+			var playerListLabel = new Label ("Player: ");
+			playerListHeader.PackStart (playerListLabel);
+			player_list_selector = new ComboBox ();
+			player_list_selector.Items.Add ("--new--");
+			player_list_selector.SelectedIndex = 0;
+			playerListHeader.PackStart (player_list_selector);
+			player_list.PackStart (playerListHeader);
+			int playerStartIndex = player_list.Children.Count ();
+
+			midi.MusicListingChanged += (o, e) => {
+				var widgetIndex = e.Index + playerStartIndex;
+				if (player_list.Children.Count () > widgetIndex)
+					player_list.Remove (player_list.Children.ElementAt (widgetIndex));
+				var hbox = new HBox ();
+				var label = new Label (e.Index.ToString ());
+				hbox.PackStart (label);
+				var button = new Button ("STOP");
+				button.Clicked += (_, __) => midi.StopPlayer (e.Index);
+				hbox.PackStart (button);
+				player_list.PackStart (hbox);
+				// FIXME: not working
+				if (player_list_selector.Items.Count <= e.Index)
+					player_list_selector.Items.Insert (e.Index, e.Index);
+			};
+			
+			entire_content_box.PackStart (player_list);
+			
 			this.Content = entire_content_box;
 
 			keyboard.SetFocus (); // it is not focused when layout is changed.
