@@ -9,8 +9,8 @@ using Commons.Music.Midi.Mml;
 
 namespace Xmmk
 {
-	public class MidiController
-	{
+	public class MidiController : IDisposable
+	{		
 		public IMidiOutput Output { get; private set; }
 		public IMidiInput Input { get; private set; }
 		public int Channel { get; set; } = 1;
@@ -31,6 +31,18 @@ namespace Xmmk
 		public MidiInstrumentMap MidiInstrumentMapOverride { get; set; }
 		public MidiInstrumentMap MidiDrumMapOverride { get; set; }
 
+		public void Dispose ()
+		{
+			DisableVirtualOutput ();
+		}
+		
+		void Send (byte [] buffer, int offset, int length, long timestamp)
+		{
+			Output.Send (buffer, offset, length, timestamp);
+			if (virtual_port != null)
+				virtual_port.Send (buffer, offset, length, timestamp);
+		}
+
 		public void SetupMidiDevices ()
 		{
 			if (MidiAccessManager.Default.Outputs.Count () == 0) {
@@ -47,6 +59,8 @@ namespace Xmmk
 			};
 
 			ChangeOutputDevice (MidiAccessManager.Default.Outputs.First ().Id);
+
+			EnableVirtualOutput ();
 		}
 
 		public void ChangeInputDevice (string deviceID)
@@ -68,7 +82,7 @@ namespace Xmmk
 			}
 
 			Output = MidiAccessManager.Default.OpenOutputAsync (deviceID).Result;
-			Output.Send (new byte [] { (byte)(MidiEvent.Program + Channel), (byte)Program }, 0, 2, 0);
+			Send (new byte [] { (byte) (MidiEvent.Program + Channel), (byte) Program }, 0, 2, 0);
 
 			CurrentDeviceId = deviceID;
 			if (OutputDeviceChanged != null)
@@ -78,9 +92,9 @@ namespace Xmmk
 		public void ChangeProgram (int newProgram, byte bankMsb, byte bankLsb)
 		{
 			Program = newProgram;
-			Output.Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelect, bankMsb }, 0, 3, 0);
-			Output.Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelectLsb, bankLsb }, 0, 3, 0);
-			Output.Send (new byte [] { (byte) (MidiEvent.Program + Channel), (byte)Program }, 0, 2, 0);
+			Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelect, bankMsb }, 0, 3, 0);
+			Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelectLsb, bankLsb }, 0, 3, 0);
+			Send (new byte [] { (byte) (MidiEvent.Program + Channel), (byte) Program }, 0, 2, 0);
 
 			if (ProgramChanged != null)
 				ProgramChanged (this, EventArgs.Empty);
@@ -88,7 +102,7 @@ namespace Xmmk
 
 		public void NoteOn (byte note, byte velocity)
 		{
-			Output.Send (new byte [] { (byte)(0x90 + Channel), note, velocity }, 0, 3, 0);
+			Send (new byte [] { (byte) (0x90 + Channel), note, velocity }, 0, 3, 0);
 			if (NoteOnReceived != null)
 				NoteOnReceived (this, new NoteEventArgs { Note = note, Velocity = velocity });
 		}
@@ -163,6 +177,29 @@ namespace Xmmk
 				players [playerIndex] = mml_music_player;
 			else
 				players.Add (mml_music_player);
+		}
+
+		IMidiOutput virtual_port;
+
+		public bool EnableVirtualOutput ()
+		{
+			IMidiAccess2 m2 = MidiAccess as IMidiAccess2;
+			if (m2 == null)
+				return false;
+			var pc = m2.ExtensionManager.GetInstance<MidiPortCreatorExtension> ();
+			if (pc == null)
+				return false;
+			virtual_port = pc.CreateVirtualInputSender (new MidiPortCreatorExtension.PortCreatorContext { Manufacturer = "managed-midi project", ApplicationName = "Xmmk", PortName = "Xmmk Input Port"});
+			return true;
+		}
+
+		public bool DisableVirtualOutput ()
+		{
+			if (virtual_port == null)
+				return false;
+			virtual_port.CloseAsync ();
+			virtual_port = null;
+			return true;
 		}
 	}
 }

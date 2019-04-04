@@ -72,7 +72,7 @@ namespace Xmmk
 				};
 			};
 			devices.SubMenu = devMenu;
-			MainMenu.Items.Add (devices);
+			MainMenu.Items.Add (devices);			
 		}
 
 		void SetupToneMenu ()
