@@ -5,7 +5,7 @@ using System.Reflection.Emit;
 using Xwt;
 using Xwt.Drawing;
 using Commons.Music.Midi;
-
+using Xwt.Backends;
 using Keys = Xwt.Key;
 using Label = Xwt.Label;
 
@@ -206,6 +206,76 @@ namespace Xmmk
 
 		void SetupWindowContent ()
 		{
+			var tabpage = new Notebook ();
+			tabpage.Add (SetupPrimaryPageContent (), "Main");
+			tabpage.Add (SetupKeyConfigurationPages (), "Key Configs");
+			this.Content = tabpage;
+		}
+
+		Widget SetupKeyConfigurationPages ()
+		{
+			var entire_config_box = new VBox ();
+			
+			var panel = new Frame () { Label = "PC Keyboard Type" };
+			var keyConfigs = new VBox ();
+			
+			var entryLabel = new Label {
+				Text = "Enter sequence of Keycodes, for high keys and low keys respectively. For non-alphanumeric keys, enter '\\unnnn' (4 hexadecimal numbers). Spaces are ignored.",
+				WidthRequest = 500,
+				Wrap = WrapMode.Word
+			};
+			keyConfigs.PackStart (entryLabel, true);
+
+			var entryControls = new HBox ();
+			var entries = new VBox ();
+			var highLabel = new Label {Text = "High keys"};
+			var lowLabel = new Label {Text = "Low keys"};
+			var highRow = new TextEntry () { WidthRequest = 500 };
+			var lowRow = new TextEntry () { WidthRequest = 500 };
+			entries.PackStart (highLabel, true);
+			entries.PackStart (highRow, true);
+			entries.PackStart (lowLabel, true);
+			entries.PackStart (lowRow, true);
+			entryControls.PackStart (entries);
+			
+			var buttons = new VBox ();
+			var us101 = new Button ("US101");
+			Func<string, string> escape = s => string.Join (" ", s.Select (c =>
+				'0' <= c && c <= '9' || 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' || @"!""#$%&'()=-~^|\@`[{+;*:}]<,>.?/_".IndexOf (c) >= 0
+					? c.ToString ()
+					: string.Format ("\\u{0:x04}", (int) c)));
+			Func<string, string> unescape = s =>
+				new System.Text.RegularExpressions.Regex (@"(\\u[0-9A-Za-z]4)").Replace (s, "\\1")
+					.Replace (" ", "");
+			Action<KeyMap> applyKeyMap = m => {
+				highRow.Text = escape (m.HighKeys);
+				lowRow.Text = escape (m.LowKeys);
+			};
+			us101.Clicked += (sender, args) => applyKeyMap (KeyMap.US101);
+			var jp106 = new Button ("JP106");
+			jp106.Clicked += (sender, args) => applyKeyMap (KeyMap.JP106);
+			buttons.PackStart (us101);
+			buttons.PackStart (jp106);
+			
+			applyKeyMap (keymap);
+			
+			entryControls.PackStart (buttons);
+			keyConfigs.PackStart (entryControls);
+
+			var applyButton = new Button ("Apply");
+			applyButton.Clicked += (sender, args) => {
+				keymap = new KeyMap (null, unescape (lowRow.Text), unescape (highRow.Text));
+			};
+			keyConfigs.PackStart (applyButton);
+
+			panel.Content = keyConfigs;
+			entire_config_box.PackStart (panel);
+			
+			return entire_config_box;
+		}
+		
+		Widget SetupPrimaryPageContent ()
+		{
 			entire_content_box = new HBox ();
 			keyboard_content_box = new VBox ();
 
@@ -285,9 +355,9 @@ namespace Xmmk
 			
 			entire_content_box.PackStart (player_list);
 			
-			this.Content = entire_content_box;
-
 			keyboard.SetFocus (); // it is not focused when layout is changed.
+			
+			return entire_content_box;
 		}
 
 		int current_layout = 0;
@@ -423,7 +493,7 @@ namespace Xmmk
 			// [LEFT] - <del>transpose decrease</del>
 			// [RIGHT] - <del>transpose increase</del>
 
-			public static readonly KeyMap MostLikelyGenericAscii = new KeyMap ("Generic ASCII", "AZSXDCFVGBHNJMK\xbcL\xbe\xbb\xbf\xba\xe2\xdd ", "1Q2W3E4R5T6Y7U8I9O0P\xbd\xc0\xde\xdb\xdc");
+			public static readonly KeyMap US101 = new KeyMap ("US101", "AZSXDCFVGBHNJMK\xbcL\xbe\xbb\xbf\xba\xe2\xdd ", "1Q2W3E4R5T6Y7U8I9O0P\xbd\xc0\xde\xdb\xdc");
 
 			public static readonly KeyMap JP106 = new KeyMap ("JP106", "AZSXDCFVGBHNJMK,L.;/:\\", "1Q2W3E4R5T6Y7U8I9O0P-@^");
 
@@ -439,9 +509,9 @@ namespace Xmmk
 			public string HighKeys { get; private set; }
 		}
 
-		readonly KeyMap [] available_keymaps = { KeyMap.MostLikelyGenericAscii, KeyMap.JP106 };
+		readonly KeyMap [] available_keymaps = { KeyMap.US101, KeyMap.JP106 };
 
-		KeyMap keymap = KeyMap.MostLikelyGenericAscii;
+		KeyMap keymap = KeyMap.US101;
 
 		#endregion
 
