@@ -131,8 +131,12 @@ namespace Xmmk
 
 		void DoExecuteMml (string mml, int playerIndex)
 		{
-			var music = CompileMmlToSong (mml);
-			StartNewSong (playerIndex, music);
+			try {
+				var music = CompileMmlToSong (mml);
+				StartNewSong (playerIndex, music);
+			} catch (Exception ex) {
+				Console.Error.WriteLine ("[error] " + ex);
+			}
 		}
 		
 		readonly List<MidiPlayer> players = new List<MidiPlayer> ();
@@ -153,7 +157,7 @@ namespace Xmmk
 
 		MidiMusic CompileMmlToSong (string mml)
 		{
-			mml += $"0 CH{Channel + 1} {mml}";
+			mml = $"1 CH{Channel + 1} t200r1t120 {mml}";
 			
 			var compiler = new MmlCompiler ();
 			var midiStream = new MemoryStream ();

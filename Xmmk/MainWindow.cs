@@ -302,7 +302,7 @@ namespace Xmmk
 				HeightRequest = 50,
 				VerticalPlacement = WidgetPlacement.Start,
 				CursorPosition = 0,
-				TooltipText = "You can send arbitrary MIDI messages in mugene MML syntax (track and channels are automatically prepended)",
+				TooltipText = "You can send arbitrary MIDI messages in mugene MML syntax (track and channel (CH) are automatically prepended)",
 			};
 			mml_exec_box.PackStart (mml_exec_pad, true);
 			keyboard_content_box.PackStart (mml_exec_box);
