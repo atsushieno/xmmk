@@ -23,9 +23,6 @@ namespace Xmmk
 		public MidiInstrumentMap CurrentInstrumentMap => MidiInstrumentMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.Maps?.FirstOrDefault ();
 		public MidiInstrumentMap CurrentDrumMap => MidiDrumMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.DrumMaps?.FirstOrDefault ();
 
-		public event EventHandler ProgramChanged;
-		public event EventHandler InputDeviceChanged;
-		public event EventHandler OutputDeviceChanged;
 		public event EventHandler<NoteEventArgs> NoteOnReceived;
 		
 		public MidiInstrumentMap MidiInstrumentMapOverride { get; set; }
@@ -76,7 +73,6 @@ namespace Xmmk
 			Input = MidiAccessManager.Default.OpenInputAsync (deviceID).Result;
 			Input.MessageReceived += (o, e) =>
 				Send (e.Data, e.Start, e.Length, e.Timestamp);
-			InputDeviceChanged (this, EventArgs.Empty);
 		}
 
 		public void ChangeOutputDevice (string deviceID)
@@ -90,8 +86,6 @@ namespace Xmmk
 			Send (new byte [] { (byte) (MidiEvent.Program + Channel), (byte) Program }, 0, 2, 0);
 
 			CurrentDeviceId = deviceID;
-			if (OutputDeviceChanged != null)
-				OutputDeviceChanged (this, EventArgs.Empty);
 		}
 
 		public void ChangeProgram (int newProgram, byte bankMsb, byte bankLsb)
@@ -100,9 +94,6 @@ namespace Xmmk
 			Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelect, bankMsb }, 0, 3, 0);
 			Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelectLsb, bankLsb }, 0, 3, 0);
 			Send (new byte [] { (byte) (MidiEvent.Program + Channel), (byte) Program }, 0, 2, 0);
-
-			if (ProgramChanged != null)
-				ProgramChanged (this, EventArgs.Empty);
 		}
 
 		public void NoteOn (byte note, byte velocity)

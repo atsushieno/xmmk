@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
+using System.Runtime.Remoting.Messaging;
 using Xwt;
 using Xwt.Drawing;
 using Commons.Music.Midi;
@@ -11,26 +12,167 @@ using Label = Xwt.Label;
 
 namespace Xmmk
 {
+	class Model
+	{
+		// logging
+		
+		public Action<string> DiagnosticEventOccurred;
+		
+		public void LogEvent (string msg)
+		{
+			if (DiagnosticEventOccurred != null)
+				DiagnosticEventOccurred (msg);
+			else
+				Console.Error.WriteLine (msg);
+		}
+		
+		// settings
+
+		UserSettings settings = new UserSettings ();
+		
+		public KeyMap [] AvailableKeyMaps { get; set; } = { KeyMap.US101, KeyMap.JP106 };
+
+		public KeyMap KeyMap { get; set; } = KeyMap.US101;
+		
+		public MidiController Midi { get; private set; } = new MidiController ();
+
+		public void LoadSettings ()
+		{
+			settings.Load ();
+			SetOutputChannel (settings.OutputChannel);
+			if (settings.DefaultInputDevice != null)
+				ChangeInputDevice (settings.DefaultInputDevice);
+			if (settings.DefaultOutputDevice != null)
+				ChangeOutputDevice (settings.DefaultOutputDevice);
+			if (settings.KeyMapLow != null && settings.KeyMapHigh != null)
+				ApplyKeyMap (new KeyMap (null, settings.KeyMapLow, settings.KeyMapHigh));
+		}
+		
+		// reflecting settings
+
+		public event Action KeyMapUpdated;
+		
+		public void ApplyKeyMap (KeyMap km)
+		{
+			KeyMap = km;
+			settings.KeyMapLow = km.LowKeys;
+			settings.KeyMapHigh = km.HighKeys;
+			settings.Save ();
+			if (KeyMapUpdated != null)
+				KeyMapUpdated ();
+		}
+
+		public event Action OutputChannelChanged;
+
+		public void SetOutputChannel (int channel)
+		{
+			Midi.Channel = channel;
+			settings.OutputChannel = channel;
+			settings.Save ();
+			if (OutputChannelChanged != null)
+				OutputChannelChanged ();
+		}
+
+		public event Action MidiInstrumentMappingChanged;
+
+		public void SetMidiMappingOverride (MidiInstrumentMap map)
+		{
+			Midi.MidiInstrumentMapOverride = map;
+			if (MidiInstrumentMappingChanged != null)
+				MidiInstrumentMappingChanged ();
+		}
+
+		public void SetDrumMappingOverride (MidiInstrumentMap map)
+		{
+			Midi.MidiDrumMapOverride = map;
+			if (MidiInstrumentMappingChanged != null)
+				MidiInstrumentMappingChanged ();
+		}
+		
+		public event EventHandler ProgramChanged;
+		public event EventHandler InputDeviceChanged;
+		public event EventHandler OutputDeviceChanged;
+
+		public void ChangeInputDevice (string deviceID)
+		{
+			try {
+				Midi.ChangeInputDevice (deviceID);
+				if (InputDeviceChanged != null)
+					InputDeviceChanged (this, EventArgs.Empty);
+				settings.DefaultInputDevice = deviceID;
+				settings.Save ();
+			} catch (Exception ex) {
+				LogEvent ("[error] " + ex);
+			}
+		}
+
+		public void ChangeOutputDevice (string deviceID)
+		{
+			try {
+				Midi.ChangeOutputDevice (deviceID);
+				if (OutputDeviceChanged != null)
+					OutputDeviceChanged (this, EventArgs.Empty);
+				settings.DefaultOutputDevice = deviceID;
+				settings.Save ();
+			} catch (Exception ex) {
+				LogEvent ("[error] " + ex);
+			}
+		}
+
+		public void ChangeProgram (int newProgram, byte bankMsb, byte bankLsb)
+		{
+			Midi.ChangeProgram (newProgram, bankMsb, bankLsb);
+			if (ProgramChanged != null)
+				ProgramChanged (this, EventArgs.Empty);
+		}
+	}
+	
 	public partial class MainWindow : Window
 	{
-		MidiController midi = new MidiController ();
+		//MidiController midi = new MidiController ();
 
 		public MainWindow ()
 		{
+			SetupModel ();
+			
 			this.Closed += (o, e) => Application.Exit ();
 
 			this.Title = "Virtual MIDI keyboard Xmmk";
 			Icon = Image.FromResource (GetType ().Assembly, "xmmk.png");
-
-			midi.SetupMidiDevices ();
-			midi.OutputDeviceChanged += (o, e) => SetupToneMenu ();
 			
 			SetupMenu ();
 
 			SetupWindowContent ();
+
+			LoadDefaultSettings ();
+		}
+
+		void SetupModel ()
+		{
+			model = new Model ();
+			model.Midi.SetupMidiDevices ();
+			
+			model.KeyMapUpdated += () => {
+				FillKeyboard (keyboard);
+				key_config_low_entry.Text = model.KeyMap.LowKeys;
+				key_config_high_entry.Text = model.KeyMap.HighKeys;
+			};
+			model.MidiInstrumentMappingChanged += SetupToneMenu;
+			model.OutputDeviceChanged += (o, e) => SetupToneMenu ();
+			model.OutputChannelChanged += () => {
+				channel_selector_box.SelectedIndex = model.Midi.Channel;
+				SetupToneMenu ();
+			};
+		}
+
+		void LoadDefaultSettings ()
+		{
+			model.LoadSettings ();
 		}
 
 		Menu tone_menu, keyboard_menu;
+
+		Model model;
 
 		void SetupMenu ()
 		{
@@ -45,13 +187,9 @@ namespace Xmmk
 			SetupToneMenu ();
 
 			keyboard_menu = new Menu ();
-			foreach (var km in available_keymaps) {
+			foreach (var km in model.AvailableKeyMaps) {
 				var mi = new MenuItem (km.Name);
-				mi.Clicked += (sender, e) => {
-					keyboard.Clear ();
-					this.keymap = km;
-					FillKeyboard (keyboard);
-				};
+				mi.Clicked += (sender, e) => model.ApplyKeyMap (km);
 				keyboard_menu.Items.Add (mi);
 			}
 			var shortcut_menu = new Menu ();
@@ -71,10 +209,10 @@ namespace Xmmk
 			var outputDevMenu = new Menu ();
 			outputDevices.Clicked += delegate {
 				outputDevMenu.Items.Clear ();
-				foreach (var output in midi.MidiAccess.Outputs) {
+				foreach (var output in model.Midi.MidiAccess.Outputs) {
 					var item = new CheckBoxMenuItem (output.Name)
-						{ Tag = output.Id, Checked = output.Id == midi.CurrentDeviceId };
-					item.Clicked += delegate { midi.ChangeOutputDevice ((string) item.Tag); };
+						{ Tag = output.Id, Checked = output.Id == model.Midi.CurrentDeviceId };
+					item.Clicked += delegate { model.ChangeOutputDevice ((string) item.Tag); };
 					outputDevMenu.Items.Add (item);
 				};
 			};
@@ -82,10 +220,10 @@ namespace Xmmk
 			var inputDevMenu = new Menu ();
 			inputDevices.Clicked += delegate {
 				inputDevMenu.Items.Clear ();
-				foreach (var input in midi.MidiAccess.Inputs.Where (d => d.Id != midi.VirtualPort.Details.Id)) {
+				foreach (var input in model.Midi.MidiAccess.Inputs.Where (d => d.Id != model.Midi.VirtualPort.Details.Id)) {
 					var item = new CheckBoxMenuItem (input.Name)
-						{ Tag = input.Id, Checked = input.Id == midi.CurrentDeviceId };
-					item.Clicked += delegate { midi.ChangeInputDevice ((string) item.Tag); };
+						{ Tag = input.Id, Checked = input.Id == model.Midi.CurrentDeviceId };
+					item.Clicked += delegate { model.ChangeInputDevice ((string) item.Tag); };
 					inputDevMenu.Items.Add (item);
 				};
 			};
@@ -104,18 +242,12 @@ namespace Xmmk
 				module.SubMenu = new Menu ();
 				foreach (var map in db.Instrument.Maps) {
 					var mapItem = new MenuItem ("[Inst] " + map.Name);
-					mapItem.Clicked += delegate {
-						midi.MidiInstrumentMapOverride = map;
-						SetupToneMenu ();
-					};
+					mapItem.Clicked += (o, e) => model.SetMidiMappingOverride (map);
 					module.SubMenu.Items.Add (mapItem);
 				}
 				foreach (var map in db.Instrument.DrumMaps) {
 					var mapItem = new MenuItem ("[Drum] " + map.Name);
-					mapItem.Clicked += delegate {
-						midi.MidiDrumMapOverride = map;
-						SetupToneMenu ();
-					};
+					mapItem.Clicked += (o, e) => model.SetDrumMappingOverride (map);
 					module.SubMenu.Items.Add (mapItem);
 				}
 				overrideDB.SubMenu.Items.Add (module);
@@ -123,16 +255,17 @@ namespace Xmmk
 			tone_menu.Items.Add (overrideDB);
 			tone_menu.Items.Add (new SeparatorMenuItem ());
 
-			var instMap = midi.Channel == 9 ? midi.CurrentDrumMap : midi.CurrentInstrumentMap;
+			bool isDrum = model.Midi.Channel == 9;
+			var instMap = isDrum ? model.Midi.CurrentDrumMap : model.Midi.CurrentInstrumentMap;
 			var progs = instMap?.Programs?.OrderBy (p => p.Index);
 			int progsSearchFrom = 0;
 			for (int i = 0; i < GeneralMidi.InstrumentCategories.Length; i++) {
-				var item = new MenuItem (midi.Channel == 9 ? "(DRUM)" : GeneralMidi.InstrumentCategories [i]);
+				var item = new MenuItem (isDrum ? "(DRUM)" : GeneralMidi.InstrumentCategories [i]);
 				var catMenu = new Menu ();
 				for (int j = 0; j < 8; j++) {
 					int index = i * 8 + j;
 					var prog = progs?.Skip (progsSearchFrom)?.FirstOrDefault (p => p.Index == index);
-					var name = prog != null ? prog.Name : midi.Channel == 9 ? GeneralMidi.DrumKitsGM2.Length > index ? GeneralMidi.DrumKitsGM2 [index] : "" : GeneralMidi.InstrumentNames [index];
+					var name = prog != null ? prog.Name : isDrum ? GeneralMidi.DrumKitsGM2.Length > index ? GeneralMidi.DrumKitsGM2 [index] : "" : GeneralMidi.InstrumentNames [index];
 					var tone = new MenuItem ($"{index}: {name}") { Sensitive = name != "" };
 					if (prog != null && prog.Banks != null && prog.Banks.Skip (1).Any ()) { // no need for only one bank
 						var bankMenu = new Menu ();
@@ -170,9 +303,9 @@ namespace Xmmk
 			var mi = (MenuItem) sender;
 			var bank = mi.Tag as Tuple<int, MidiBankDefinition>;
 			if (bank != null)
-				midi.ChangeProgram (bank.Item1, (byte) bank.Item2.Msb, (byte) bank.Item2.Lsb);
+				model.ChangeProgram (bank.Item1, (byte) bank.Item2.Msb, (byte) bank.Item2.Lsb);
 			else
-				midi.ChangeProgram ((byte) (int) mi.Tag, 0, 0);
+				model.ChangeProgram ((byte) (int) mi.Tag, 0, 0);
 		}
 
 		#region Keyboard
@@ -187,6 +320,12 @@ namespace Xmmk
 
 		Label octave_label;
 		Label transpose_label;
+		VBox keyboard;
+		TextEntry mml_record_pad;
+		TextEntry mml_exec_pad;
+		ComboBox player_list_selector;
+		TextEntry key_config_high_entry;
+		TextEntry key_config_low_entry;
 
 		public int Octave {
 			get => octave;
@@ -214,14 +353,6 @@ namespace Xmmk
 			}
 		}
 
-		TextEntry mml_record_pad;
-		TextEntry mml_exec_pad;
-		VBox keyboard;
-		HBox entire_content_box;
-		VBox keyboard_content_box;
-		VBox player_list;
-		ComboBox player_list_selector;
-
 		void SetupWindowContent ()
 		{
 			var tabpage = new Notebook ();
@@ -248,12 +379,12 @@ namespace Xmmk
 			var entries = new VBox ();
 			var highLabel = new Label {Text = "High keys"};
 			var lowLabel = new Label {Text = "Low keys"};
-			var highRow = new TextEntry () { WidthRequest = 500 };
-			var lowRow = new TextEntry () { WidthRequest = 500 };
+			key_config_high_entry = new TextEntry () { WidthRequest = 500 };
+			key_config_low_entry = new TextEntry () { WidthRequest = 500 };
 			entries.PackStart (highLabel, true);
-			entries.PackStart (highRow, true);
+			entries.PackStart (key_config_high_entry, true);
 			entries.PackStart (lowLabel, true);
-			entries.PackStart (lowRow, true);
+			entries.PackStart (key_config_low_entry, true);
 			entryControls.PackStart (entries);
 			
 			var buttons = new VBox ();
@@ -266,8 +397,8 @@ namespace Xmmk
 				new System.Text.RegularExpressions.Regex (@"(\\u[0-9A-Za-z]4)").Replace (s, "\\1")
 					.Replace (" ", "");
 			Action<KeyMap> applyKeyMap = m => {
-				highRow.Text = escape (m.HighKeys);
-				lowRow.Text = escape (m.LowKeys);
+				key_config_high_entry.Text = escape (m.HighKeys);
+				key_config_low_entry.Text = escape (m.LowKeys);
 			};
 			us101.Clicked += (sender, args) => applyKeyMap (KeyMap.US101);
 			var jp106 = new Button ("JP106");
@@ -275,14 +406,14 @@ namespace Xmmk
 			buttons.PackStart (us101);
 			buttons.PackStart (jp106);
 			
-			applyKeyMap (keymap);
+			applyKeyMap (model.KeyMap);
 			
 			entryControls.PackStart (buttons);
 			keyConfigs.PackStart (entryControls);
 
 			var applyButton = new Button ("Apply");
 			applyButton.Clicked += (sender, args) => {
-				keymap = new KeyMap (null, unescape (lowRow.Text), unescape (highRow.Text));
+				model.ApplyKeyMap (new KeyMap (null, unescape (key_config_low_entry.Text), unescape (key_config_high_entry.Text)));
 			};
 			keyConfigs.PackStart (applyButton);
 
@@ -294,6 +425,10 @@ namespace Xmmk
 		
 		Widget SetupPrimaryPageContent ()
 		{
+			HBox entire_content_box;
+			VBox keyboard_content_box;
+			VBox player_list;
+			
 			entire_content_box = new HBox ();
 			keyboard_content_box = new VBox ();
 
@@ -313,7 +448,7 @@ namespace Xmmk
 				Label = "Run",
 				TooltipText = "Compile and run MML"
 			};
-			mml_exec_button.Clicked += delegate { midi.ExecuteMml (mml_exec_pad.Text, player_list_selector.SelectedIndex); };
+			mml_exec_button.Clicked += delegate { model.Midi.ExecuteMml (mml_exec_pad.Text, player_list_selector.SelectedIndex); };
 			mml_exec_box.PackStart (mml_exec_button, false);
 			mml_exec_pad = new TextEntry () {
 				MultiLine = true,
@@ -347,7 +482,7 @@ namespace Xmmk
 			player_list.PackStart (playerListHeader);
 			int playerStartIndex = player_list.Children.Count ();
 
-			midi.MusicListingChanged += (o, e) => {
+			model.Midi.MusicListingChanged += (o, e) => {
 				Application.InvokeAsync (() => {
 					var widgetIndex = e.Index + playerStartIndex;
 					var items = player_list.Children.ToList ();
@@ -359,7 +494,7 @@ namespace Xmmk
 					var label = new Label (e.Index.ToString ());
 					hbox.PackStart (label);
 					var button = new Button ("STOP");
-					button.Clicked += (_, __) => midi.StopPlayer (e.Index);
+					button.Clicked += (_, __) => model.Midi.StopPlayer (e.Index);
 					hbox.PackStart (button);
 					items.Insert (widgetIndex, hbox);
 
@@ -379,6 +514,7 @@ namespace Xmmk
 		}
 
 		int current_layout = 0;
+		ComboBox channel_selector_box;
 
 		HBox SetupHeadToolBox ()
 		{
@@ -397,15 +533,14 @@ namespace Xmmk
 
 			// channel selector
 			headToolBox.PackStart (new Label {Text = "Ch."});
-			var channelSelectorBox = new ComboBox { TooltipText = "Set MIDI output channel. 10 for drums."};
+			channel_selector_box = new ComboBox { TooltipText = "Set MIDI output channel. 10 for drums."};
 			foreach (var n in Enumerable.Range(0, 15))
-				channelSelectorBox.Items.Add ((n + 1).ToString ());
-			channelSelectorBox.SelectedIndex = midi.Channel;
-			channelSelectorBox.SelectionChanged += delegate {
-				midi.Channel = channelSelectorBox.SelectedIndex;
-				SetupToneMenu ();
+				channel_selector_box.Items.Add ((n + 1).ToString ());
+			channel_selector_box.SelectedIndex = model.Midi.Channel;
+			channel_selector_box.SelectionChanged += delegate {
+				model.SetOutputChannel (channel_selector_box.SelectedIndex);
 			};
-			headToolBox.PackStart (channelSelectorBox);
+			headToolBox.PackStart (channel_selector_box);
 
 			// octave and transpose
 			this.octave_label = new Label ();
@@ -432,14 +567,15 @@ namespace Xmmk
 
 		VBox FillKeyboard (VBox panel)
 		{
+			panel.Clear ();
 			HBox keys1 = new HBox (), keys2 = new HBox (), keys3 = new HBox (), keys4 = new HBox ();
 
 			var keyRows = new List<Tuple<string, List<Button>, HBox, HBox, Action<Button[]>>> ();
 			// (JP106) offset 4, 10, 18 are not mapped, so skip those numbers
 			var hl = new List<Button> ();
-			keyRows.Add (Tuple.Create (keymap.HighKeys, hl, keys1, keys2, new Action<Button[]> (a => high_buttons = a)));
+			keyRows.Add (Tuple.Create (model.KeyMap.HighKeys, hl, keys1, keys2, new Action<Button[]> (a => high_buttons = a)));
 			var ll = new List<Button> ();
-			keyRows.Add (Tuple.Create (keymap.LowKeys, ll, keys3, keys4, new Action<Button []> (a => low_buttons = a)));
+			keyRows.Add (Tuple.Create (model.KeyMap.LowKeys, ll, keys3, keys4, new Action<Button []> (a => low_buttons = a)));
 
 			foreach (var keyRow in keyRows) {
 				int labelStringIndex = key_labels.Length - 5;
@@ -497,40 +633,6 @@ namespace Xmmk
 			return true;
 		}
 
-		class KeyMap
-		{
-			// note that those arrays do not contain non-mapped notes: index at 4, 10, 18
-
-			// keyboard map for JP106
-			// [1][2][3][4][5][6][7][8][9][0][-][^][\]
-			//  [Q][W][E][R][T][Y][U][I][O][P][@][{]
-			//  [A][S][D][F][G][H][J][K][L][;][:][}]
-			//   [Z][X][C][V][B][N][M][<][>][?][_]
-			// [UP] - octave up
-			// [DOWN] - octave down
-			// [LEFT] - <del>transpose decrease</del>
-			// [RIGHT] - <del>transpose increase</del>
-
-			public static readonly KeyMap US101 = new KeyMap ("US101", "AZSXDCFVGBHNJMK\xbcL\xbe\xbb\xbf\xba\xe2\xdd ", "1Q2W3E4R5T6Y7U8I9O0P\xbd\xc0\xde\xdb\xdc");
-
-			public static readonly KeyMap JP106 = new KeyMap ("JP106", "AZSXDCFVGBHNJMK,L.;/:\\", "1Q2W3E4R5T6Y7U8I9O0P-@^");
-
-			public KeyMap (string name, string lowKeys, string highKeys)
-			{
-				Name = name;
-				LowKeys = lowKeys;
-				HighKeys = highKeys;
-			}
-
-			public string Name { get; private set; }
-			public string LowKeys { get; private set; }
-			public string HighKeys { get; private set; }
-		}
-
-		readonly KeyMap [] available_keymaps = { KeyMap.US101, KeyMap.JP106 };
-
-		KeyMap keymap = KeyMap.US101;
-
 		#endregion
 
 		#region Key Events
@@ -557,14 +659,14 @@ namespace Xmmk
 				break;
 			default:
 				var ch = char.ToUpper ((char) key);
-				var idx = keymap.LowKeys.IndexOf (ch);
+				var idx = model.KeyMap.LowKeys.IndexOf (ch);
 				if (!IsNotableIndex (idx))
 					return;
 
 				if (idx >= 0)
 					ProcessNoteKey (down, true, idx);
 				else {
-					idx = keymap.HighKeys.IndexOf (ch);
+					idx = model.KeyMap.HighKeys.IndexOf (ch);
 					if (!IsNotableIndex (idx))
 						return;
 					if (idx >= 0)
@@ -622,7 +724,7 @@ namespace Xmmk
 					}
 					mml_record_pad.CursorPosition = newPosition;
 				}
-				midi.NoteOn ((byte)note, (byte)(down ? 100 : 0));
+				model.Midi.NoteOn ((byte)note, (byte)(down ? 100 : 0));
 			}
 		}
 
