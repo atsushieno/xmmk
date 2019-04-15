@@ -43,7 +43,7 @@ namespace Xmmk
 
 			tone_menu = new Menu ();
 			SetupToneMenu ();
-			
+
 			keyboard_menu = new Menu ();
 			foreach (var km in available_keymaps) {
 				var mi = new MenuItem (km.Name);
@@ -54,24 +54,42 @@ namespace Xmmk
 				};
 				keyboard_menu.Items.Add (mi);
 			}
+			var shortcut_menu = new Menu ();
+			shortcut_menu.Items.Add (new MenuItem ("_Keyboard") { SubMenu = keyboard_menu });
 
 			MainMenu = new Menu ();
 			MainMenu.Items.Add (new MenuItem ("_File") { SubMenu = fileMenu });
 			MainMenu.Items.Add (new MenuItem ("_Tone") { SubMenu = tone_menu });
-			MainMenu.Items.Add (new MenuItem ("_Keyboard") { SubMenu = keyboard_menu });
+			MainMenu.Items.Add (new MenuItem ("_Shortcuts") { SubMenu = shortcut_menu });
 			
 			var devices = new MenuItem ("_Devices");
-			var devMenu = new Menu ();
-			devices.Clicked += delegate {
-				devMenu.Items.Clear ();
+			devices.SubMenu = new Menu ();
+			var outputDevices = new MenuItem ("_Output");
+			var inputDevices = new MenuItem ("_Input");
+			devices.SubMenu.Items.Add (outputDevices);
+			devices.SubMenu.Items.Add (inputDevices);
+			var outputDevMenu = new Menu ();
+			outputDevices.Clicked += delegate {
+				outputDevMenu.Items.Clear ();
 				foreach (var output in midi.MidiAccess.Outputs) {
 					var item = new CheckBoxMenuItem (output.Name)
 						{ Tag = output.Id, Checked = output.Id == midi.CurrentDeviceId };
 					item.Clicked += delegate { midi.ChangeOutputDevice ((string) item.Tag); };
-					devMenu.Items.Add (item);
+					outputDevMenu.Items.Add (item);
 				};
 			};
-			devices.SubMenu = devMenu;
+			outputDevices.SubMenu = outputDevMenu;
+			var inputDevMenu = new Menu ();
+			inputDevices.Clicked += delegate {
+				inputDevMenu.Items.Clear ();
+				foreach (var input in midi.MidiAccess.Inputs.Where (d => d.Id != midi.VirtualPort.Details.Id)) {
+					var item = new CheckBoxMenuItem (input.Name)
+						{ Tag = input.Id, Checked = input.Id == midi.CurrentDeviceId };
+					item.Clicked += delegate { midi.ChangeInputDevice ((string) item.Tag); };
+					inputDevMenu.Items.Add (item);
+				};
+			};
+			inputDevices.SubMenu = inputDevMenu;
 			MainMenu.Items.Add (devices);			
 		}
 

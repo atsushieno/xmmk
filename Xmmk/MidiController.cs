@@ -10,7 +10,7 @@ using Commons.Music.Midi.Mml;
 namespace Xmmk
 {
 	public class MidiController : IDisposable
-	{		
+	{
 		public IMidiOutput Output { get; private set; }
 		public IMidiInput Input { get; private set; }
 		public int Channel { get; set; } = 1;
@@ -33,6 +33,12 @@ namespace Xmmk
 
 		public void Dispose ()
 		{
+			if (Input != null)
+				Input.Dispose ();
+			Input = null;
+			if (Output != null)
+				Output.Dispose ();
+			Output = null;
 			DisableVirtualOutput ();
 		}
 		
@@ -52,10 +58,7 @@ namespace Xmmk
 			}
 
 			AppDomain.CurrentDomain.DomainUnload += delegate {
-				if (Input != null)
-					Input.Dispose ();
-				if (Output != null)
-					Output.Dispose ();
+				Dispose ();
 			};
 
 			ChangeOutputDevice (MidiAccessManager.Default.Outputs.First ().Id);
@@ -71,6 +74,8 @@ namespace Xmmk
 			}
 
 			Input = MidiAccessManager.Default.OpenInputAsync (deviceID).Result;
+			Input.MessageReceived += (o, e) =>
+				Send (e.Data, e.Start, e.Length, e.Timestamp);
 			InputDeviceChanged (this, EventArgs.Empty);
 		}
 
@@ -205,5 +210,7 @@ namespace Xmmk
 			virtual_port = null;
 			return true;
 		}
+
+		public IMidiOutput VirtualPort => virtual_port;
 	}
 }
