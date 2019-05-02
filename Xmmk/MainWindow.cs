@@ -469,6 +469,7 @@ namespace Xmmk
 				TooltipText = "Your note on/off inputs are recorded here",
 			};
 			keyboard_content_box.PackStart (mml_record_pad);
+			model.ProgramChanged += (o, e) => mml_record_pad.Text += $" @{model.Midi.Program},{model.Midi.BankMsb},{model.Midi.BankLsb}"; 
 
 			// Player list
 			player_list = new VBox ();

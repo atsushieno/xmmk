@@ -15,6 +15,8 @@ namespace Xmmk
 		public IMidiInput Input { get; private set; }
 		public int Channel { get; set; } = 1;
 		public int Program { get; private set; } = 0; // grand piano
+		public int BankMsb { get; private set; } = 0;
+		public int BankLsb { get; private set; } = 0;
 
 		public IMidiAccess MidiAccess => MidiAccessManager.Default;
 		
@@ -91,6 +93,8 @@ namespace Xmmk
 		public void ChangeProgram (int newProgram, byte bankMsb, byte bankLsb)
 		{
 			Program = newProgram;
+			BankMsb = bankMsb;
+			BankLsb = bankLsb;
 			Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelect, bankMsb }, 0, 3, 0);
 			Send (new byte [] { (byte) (MidiEvent.CC + Channel), MidiCC.BankSelectLsb, bankLsb }, 0, 3, 0);
 			Send (new byte [] { (byte) (MidiEvent.Program + Channel), (byte) Program }, 0, 2, 0);
