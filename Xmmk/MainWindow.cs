@@ -260,7 +260,7 @@ namespace Xmmk
 			var progs = instMap?.Programs?.OrderBy (p => p.Index);
 			int progsSearchFrom = 0;
 			for (int i = 0; i < GeneralMidi.InstrumentCategories.Length; i++) {
-				var item = new MenuItem (isDrum ? "(DRUM)" : GeneralMidi.InstrumentCategories [i]);
+				var item = new MenuItem (isDrum ? $"(DRUM {i * 8}-{i * 8 + 7})" : GeneralMidi.InstrumentCategories [i]);
 				var catMenu = new Menu ();
 				for (int j = 0; j < 8; j++) {
 					int index = i * 8 + j;
