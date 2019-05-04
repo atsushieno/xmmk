@@ -52,16 +52,16 @@ namespace Xmmk
 
 		public void SetupMidiDevices ()
 		{
-			if (MidiAccessManager.Default.Outputs.Count () == 0) {
-				MessageDialog.ShowError ("No MIDI device was found.");
-				Output = empty_output;
-			}
-
 			AppDomain.CurrentDomain.DomainUnload += delegate {
 				Dispose ();
 			};
 
-			ChangeOutputDevice (MidiAccessManager.Default.Outputs.First ().Id);
+			if (MidiAccessManager.Default.Outputs.Count () == 0) {
+				MessageDialog.ShowError ("No MIDI device was found.");
+				Output = empty_output;
+			}
+			else
+				ChangeOutputDevice (MidiAccessManager.Default.Outputs.First ().Id);
 
 			EnableVirtualOutput ();
 		}
