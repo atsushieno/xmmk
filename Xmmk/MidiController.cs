@@ -11,7 +11,9 @@ namespace Xmmk
 {
 	public class MidiController : IDisposable
 	{
-		public IMidiOutput Output { get; private set; }
+		static IMidiOutput empty_output = MidiAccessManager.Empty
+			.OpenOutputAsync (MidiAccessManager.Empty.Outputs.First ().Id).Result; 
+		public IMidiOutput Output { get; private set; } = empty_output;
 		public IMidiInput Input { get; private set; }
 		public int Channel { get; set; } = 1;
 		public int Program { get; private set; } = 0; // grand piano
@@ -22,8 +24,8 @@ namespace Xmmk
 		
 		public string CurrentDeviceId { get; set; }
 
-		public MidiInstrumentMap CurrentInstrumentMap => MidiInstrumentMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.Maps?.FirstOrDefault ();
-		public MidiInstrumentMap CurrentDrumMap => MidiDrumMapOverride ?? MidiModuleDatabase.Default.Resolve (Output.Details.Name)?.Instrument?.DrumMaps?.FirstOrDefault ();
+		public MidiInstrumentMap CurrentInstrumentMap => MidiInstrumentMapOverride ?? MidiModuleDatabase.Default.Resolve (Output?.Details?.Name)?.Instrument?.Maps?.FirstOrDefault ();
+		public MidiInstrumentMap CurrentDrumMap => MidiDrumMapOverride ?? MidiModuleDatabase.Default.Resolve (Output?.Details?.Name)?.Instrument?.DrumMaps?.FirstOrDefault ();
 
 		public event EventHandler<NoteEventArgs> NoteOnReceived;
 		
@@ -37,7 +39,7 @@ namespace Xmmk
 			Input = null;
 			if (Output != null)
 				Output.Dispose ();
-			Output = null;
+			Output = empty_output;
 			DisableVirtualOutput ();
 		}
 		
@@ -52,8 +54,7 @@ namespace Xmmk
 		{
 			if (MidiAccessManager.Default.Outputs.Count () == 0) {
 				MessageDialog.ShowError ("No MIDI device was found.");
-				Application.Exit ();
-				return;
+				Output = empty_output;
 			}
 
 			AppDomain.CurrentDomain.DomainUnload += delegate {
@@ -81,7 +82,7 @@ namespace Xmmk
 		{
 			if (Output != null) {
 				Output.Dispose ();
-				Output = null;
+				Output = empty_output;
 			}
 
 			Output = MidiAccessManager.Default.OpenOutputAsync (deviceID).Result;
