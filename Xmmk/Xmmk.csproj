@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\Xwt.Gtk.0.2.143\build\Xwt.Gtk.props" Condition="Exists('..\packages\Xwt.Gtk.0.2.143\build\Xwt.Gtk.props')" />
+  <Import Project="..\packages\Xwt.Gtk.0.2.195\build\Xwt.Gtk.props" Condition="Exists('..\packages\Xwt.Gtk.0.2.195\build\Xwt.Gtk.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Xmmk</RootNamespace>
     <AssemblyName>Xmmk</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
@@ -35,30 +35,47 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="alsa-sharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\managed-midi.1.1.0\lib\net45\alsa-sharp.dll</HintPath>
+      <HintPath>..\packages\managed-midi.1.9.12\lib\net45\alsa-sharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="mugene, Version=1.0.6699.5397, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\mugene.1.2.0\lib\net45\mugene.exe</HintPath>
+    <Reference Include="Commons.Music.Midi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\packages\managed-midi.1.9.12\lib\net45\Commons.Music.Midi.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="mugene, Version=1.0.7217.3781, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\packages\mugene.1.2.5\lib\net45\mugene.exe</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mugenelib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\mugene.1.2.0\lib\net45\mugenelib.dll</HintPath>
+      <HintPath>..\packages\mugene.1.2.5\lib\net45\mugenelib.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Xml" />
     <Reference Include="Xwt">
-      <HintPath>..\packages\Xwt.0.2.143\lib\net40\Xwt.dll</HintPath>
+      <HintPath>..\packages\Xwt.0.2.195\lib\net40\Xwt.dll</HintPath>
     </Reference>
     <Reference Include="Xwt.WPF">
-      <HintPath>..\packages\Xwt.WPF.0.2.143\lib\net40\Xwt.WPF.dll</HintPath>
+      <HintPath>..\packages\Xwt.WPF.0.2.195\lib\net40\Xwt.WPF.dll</HintPath>
     </Reference>
     <Reference Include="Xwt.XamMac">
-      <HintPath>..\packages\Xwt.XamMac.0.2.143\lib\net40\Xwt.XamMac.dll</HintPath>
+      <HintPath>..\packages\Xwt.XamMac.0.2.195\lib\net40\Xwt.XamMac.dll</HintPath>
     </Reference>
     <Reference Include="Xwt.Gtk">
-      <HintPath>..\packages\Xwt.Gtk.0.2.143\lib\net40\Xwt.Gtk.dll</HintPath>
+      <HintPath>..\packages\Xwt.Gtk.0.2.195\lib\net40\Xwt.Gtk.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xaml" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="PresentationFramework.Aero" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="UIAutomationProvider" />
+    <Reference Include="UIAutomationTypes" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="mugene">
+      <HintPath>..\packages\mugene.1.2.3\lib\net45\mugene.exe</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
