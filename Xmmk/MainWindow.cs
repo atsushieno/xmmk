@@ -460,6 +460,15 @@ namespace Xmmk
 			mml_exec_box.PackStart (mml_exec_pad, true);
 			keyboard_content_box.PackStart (mml_exec_box);
 
+			var chordsLabel = new Label () { Text = "(chord is shown here)"};
+			model.Midi.NoteOnOffReceived += (sender, args) => {
+				var chordNames = model.Midi.GuessChords ();
+				chordsLabel.Text = chordNames?.Length > 50 ?
+					chordNames.Substring (0, 50) + "..." : 
+					chordNames?.Length > 0 ? chordNames : "(chord is shown here)";
+			};
+			keyboard_content_box.PackStart (chordsLabel);
+
 			// MML recording pad
 			mml_record_pad = new TextEntry () {
 				MultiLine = true,
@@ -725,7 +734,7 @@ namespace Xmmk
 					}
 					mml_record_pad.CursorPosition = newPosition;
 				}
-				model.Midi.NoteOn ((byte)note, (byte)(down ? 100 : 0));
+				model.Midi.NoteOnOff ((byte)note, (byte)(down ? 100 : 0));
 			}
 		}
 

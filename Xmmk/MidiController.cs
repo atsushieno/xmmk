@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Xwt;
 using Commons.Music.Midi;
 using Commons.Music.Midi.Mml;
+using Commons.Music.Musicality;
 
 namespace Xmmk
 {
@@ -27,10 +28,12 @@ namespace Xmmk
 		public MidiInstrumentMap CurrentInstrumentMap => MidiInstrumentMapOverride ?? MidiModuleDatabase.Default.Resolve (Output?.Details?.Name)?.Instrument?.Maps?.FirstOrDefault ();
 		public MidiInstrumentMap CurrentDrumMap => MidiDrumMapOverride ?? MidiModuleDatabase.Default.Resolve (Output?.Details?.Name)?.Instrument?.DrumMaps?.FirstOrDefault ();
 
-		public event EventHandler<NoteEventArgs> NoteOnReceived;
+		public event EventHandler<NoteOnOffEventArgs> NoteOnOffReceived;
 		
 		public MidiInstrumentMap MidiInstrumentMapOverride { get; set; }
 		public MidiInstrumentMap MidiDrumMapOverride { get; set; }
+		
+		MidiMachine machine = new MidiMachine ();
 
 		public void Dispose ()
 		{
@@ -101,14 +104,15 @@ namespace Xmmk
 			Send (new byte [] { (byte) (MidiEvent.Program + Channel), (byte) Program }, 0, 2, 0);
 		}
 
-		public void NoteOn (byte note, byte velocity)
+		public void NoteOnOff (byte note, byte velocity)
 		{
+			machine.Channels [Channel].NoteVelocity [note] = velocity;
 			Send (new byte [] { (byte) (0x90 + Channel), note, velocity }, 0, 3, 0);
-			if (NoteOnReceived != null)
-				NoteOnReceived (this, new NoteEventArgs { Note = note, Velocity = velocity });
+			if (NoteOnOffReceived != null)
+				NoteOnOffReceived (this, new NoteOnOffEventArgs { Note = note, Velocity = velocity });
 		}
 
-		public class NoteEventArgs
+		public class NoteOnOffEventArgs
 		{
 			public int Note { get; set; }
 			public int Velocity { get; set; }
@@ -208,5 +212,24 @@ namespace Xmmk
 		}
 
 		public IMidiOutput VirtualPort => virtual_port;
+
+		public string GuessChords ()
+		{
+			var candidates = new List<string> ();
+			var noteStates = machine.Channels [Channel].NoteVelocity;
+			bool[] components = new bool [12];
+			var lowestNote = 0;
+			for (int i = 0; i < noteStates.Length; i++) {
+				if (noteStates [i] == 0)
+					continue;
+				lowestNote = Math.Min (lowestNote, i);
+				components [i % 12] = true;
+			}
+			foreach (var chord in Chord.KnownChords)
+				if (chord.Matches (components))
+					candidates.Add (chord.Name);
+
+			return string.Join (", ", candidates);
+		}
 	}
 }

@@ -139,7 +139,7 @@ namespace Commons.Music.Musicality
 			Dominant7thFlatted5th = new PitchClass ("7b5", "7dim5", new byte [] { 0 , 4 , 6 , 10  }),
 			
 			MajorAdd9th = new PitchClass ("add9", "add9", new byte [] { 0, 2, 4, 7 }),
-			MinorAdd9th = new PitchClass ("madd9", "minadd9", new byte [] { 0, 2, 3, 7 }),
+			MinorAdd9th = new PitchClass ("madd9", "minadd9", new byte [] { 0, 2, 3, 7 })
 			
 			/*
 			Sus4 = new PitchClass ("sus4", "sus4", new byte [] { 0, 5, 7 })
@@ -151,17 +151,18 @@ namespace Commons.Music.Musicality
 			Dominant11th = new PitchClass ("11", "maj9", new byte [] { 0, 4, 7, 11, 14, 17 }),
 			Dominant13th = new PitchClass ("M13", "min", new byte [] { 0, 4, 7, 11, 14, 17, 21 });
 			*/
-			__dummy__ = null;
+			;
+		
+		internal static readonly PitchClass [] all_pitch_classes =
+			typeof (PitchClass).GetFields ()
+				.Where (f => f.FieldType == typeof (PitchClass))
+				.Select (f => f.GetValue (null))
+				.Cast<PitchClass> ().ToArray ();
+
 	}
 	
 	public class Chord
 	{
-		static readonly PitchClass [] all_pitch_classes =
-			typeof (PitchClass).GetFields ()
-			.Where (f => f.FieldType == typeof (PitchClass))
-			.Select (f => f.GetValue (null))
-			.Cast<PitchClass> ().ToArray ();
-
 		public readonly string Name;
 		public readonly PitchClass PitchClass;
 		public readonly byte Root;
@@ -173,9 +174,17 @@ namespace Commons.Music.Musicality
 			PitchClass = pitchClass;
 		}
 		
-		public static readonly Chord [] known_chords = Enumerable.Range (Notes.C, Notes.B)
-			.Cast<byte> ()
-			.SelectMany (root => all_pitch_classes.Select (pc => new Chord (Notes.GetName (root) + pc.ShortName, root, pc)))
+		public static readonly Chord [] KnownChords = Enumerable.Range (Notes.C, Notes.B)
+			.Select (v => (byte) v)
+			.SelectMany (root => PitchClass.all_pitch_classes.Select (pc => new Chord (Notes.GetName (root) + pc.ShortName, root, pc)))
 			.ToArray ();
+
+		public bool Matches (bool [] notes)
+		{
+			for (int i = Root; i < Root + 12; i++)
+				if (notes [i % 12] != PitchClass.Intervals.Any (v => v + Root == i))
+					return false;
+			return true;
+		}
 	}
 }
