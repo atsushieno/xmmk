@@ -40,11 +40,11 @@ namespace Xmmk
 		{
 			settings.Load ();
 			SetOutputChannel (settings.OutputChannel);
-			if (settings.DefaultInputDevice != null)
+			if (!string.IsNullOrEmpty(settings.DefaultInputDevice))
 				ChangeInputDevice (settings.DefaultInputDevice);
-			if (settings.DefaultOutputDevice != null)
+			if (!string.IsNullOrEmpty(settings.DefaultOutputDevice))
 				ChangeOutputDevice (settings.DefaultOutputDevice);
-			if (settings.KeyMapLow != null && settings.KeyMapHigh != null)
+			if (!string.IsNullOrEmpty(settings.KeyMapLow) && !string.IsNullOrEmpty(settings.KeyMapHigh))
 				ApplyKeyMap (new KeyMap (null, settings.KeyMapLow, settings.KeyMapHigh));
 		}
 		
