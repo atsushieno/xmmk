@@ -179,6 +179,25 @@ namespace Xmmk
 				players [playerIndex].Dispose ();
 			
 			mml_music_player = new MidiPlayer (music, Output);
+			if (virtual_port != null)
+			{
+				var buffer = new byte[1024];
+				mml_music_player.EventReceived += (evt) => {
+					if (MidiEvent.FixedDataSize(evt.StatusByte) == 0) {
+						buffer[0] = evt.StatusByte;
+						if (buffer.Length < evt.ExtraDataLength - evt.ExtraDataOffset)
+							buffer = new byte[evt.ExtraDataLength - evt.ExtraDataOffset + 1];
+						Array.Copy (evt.ExtraData, evt.ExtraDataOffset, buffer, 1, evt.ExtraDataLength);
+						virtual_port.Send (buffer, 0, evt.ExtraDataLength + 1, 0);
+					} else {
+						buffer[0] = evt.EventType;
+						buffer[1] = evt.Msb;
+						buffer[2] = evt.Lsb;
+						virtual_port.Send (buffer, 0, 1 + MidiEvent.FixedDataSize (evt.StatusByte), 0);
+					}
+				};
+			}
+
 			mml_music_player.PlayAsync ();
 			if (MusicListingChanged != null)
 				MusicListingChanged (this, new PlayerListingChangedEventArgs (playerIndex, music));
